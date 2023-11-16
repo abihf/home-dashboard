@@ -1,6 +1,13 @@
 "use client";
-import { PropsWithChildren, ReactPropTypes, useEffect, useRef, useState } from "react";
+import { PropsWithChildren, ReactElement, ReactNode, ReactPropTypes, useEffect, useRef, useState } from "react";
 import { NetUsage, StatusResponse } from "./api/status/types";
+import { CpuIcon } from "../icons/CpuIcon";
+import { FireIcon } from "../icons/FireIcon";
+import { ComputerIcon } from "../icons/ComputerIcon";
+import { DiskIcon } from "../icons/DiskIcon";
+import { FilmIcon } from "../icons/FilmIcon";
+import { DownloadIcon } from "../icons/DownloadIcon";
+import { UploadIcon } from "../icons/UploadIcon";
 
 class FetchError extends Error {
   res: Response;
@@ -36,12 +43,22 @@ export function Status() {
   }
 
   return (
-    <div>
-      <Progress percent={status.cpuUsage}>CPU: {status.cpuUsage.toFixed(2)}%</Progress>
-      <Progress percent={status.cpuTemp}>Temperature: {status.cpuTemp.toFixed(2)}°C</Progress>
-      <Progress percent={status.memUsage.percent}>Memory: {normalizeSize(status.memUsage.usage)}B</Progress>
-      <Progress percent={status.diskRoot.percent}>OS Disk: {normalizeSize(status.diskRoot.usage)}B</Progress>
-      <Progress percent={status.diskMedia.percent}>Media: {normalizeSize(status.diskMedia.usage)}B</Progress>
+    <div className="grid grid-cols-2 gap-4">
+      <Progress percent={status.cpuUsage} icon={<CpuIcon />}>
+        {status.cpuUsage.toFixed(2)}%
+      </Progress>
+      <Progress percent={status.cpuTemp} icon={<FireIcon />}>
+        {status.cpuTemp.toFixed(2)}°C
+      </Progress>
+      <Progress percent={status.memUsage.percent} icon={<ComputerIcon />} className="col-span-2">
+        {normalizeSize(status.memUsage.usage)}B
+      </Progress>
+      <Progress percent={status.diskRoot.percent} icon={<DiskIcon />}>
+        {normalizeSize(status.diskRoot.usage)}B
+      </Progress>
+      <Progress percent={status.diskMedia.percent} icon={<FilmIcon />}>
+        {normalizeSize(status.diskMedia.usage)}B
+      </Progress>
       <NetworkUsage {...status.netUsage} />
     </div>
   );
@@ -67,10 +84,6 @@ function NetworkUsage({ lastRx, lastTx }: NetUsage) {
     if (deltaTime > 100) {
       networkData.current.speedTx = (1000 * (lastTx - networkData.current.lastTx)) / deltaTime;
       networkData.current.speedRx = (1000 * (lastRx - networkData.current.lastRx)) / deltaTime;
-      networkData.current.percent = Math.min(
-        100,
-        (100 * (networkData.current.speedTx + networkData.current.speedRx)) / 10_000_000
-      );
     } else {
       netUpdate = false;
     }
@@ -81,9 +94,14 @@ function NetworkUsage({ lastRx, lastTx }: NetUsage) {
     networkData.current.lastRx = lastRx;
   }
   return (
-    <Progress percent={networkData.current.percent}>
-      Up: {normalizeSize(networkData.current.speedTx)}Bps | Down {normalizeSize(networkData.current.speedRx)}Bps
-    </Progress>
+    <>
+      <Progress percent={networkData.current.speedRx / 100_000} icon={<DownloadIcon />}>
+        {normalizeSize(networkData.current.speedRx)}Bps
+      </Progress>
+      <Progress percent={networkData.current.speedTx / 100_000} icon={<UploadIcon />}>
+        {normalizeSize(networkData.current.speedTx)}Bps
+      </Progress>
+    </>
   );
 }
 
@@ -101,29 +119,43 @@ function normalizeSize(size: number, digits = 2) {
 
 type ProgressProps = PropsWithChildren<{
   percent: number;
+  icon?: ReactNode;
+  className?: string;
 }>;
 
-function Progress({ percent: progress, children }: ProgressProps) {
+function Progress({ percent, children, icon = "", className = "" }: ProgressProps) {
+  if (percent > 100) {
+    percent = 100;
+  }
+
   return (
-    <div className="relative w-full h-14 overflow-hidden bg-black/5 border-white border-2 backdrop-blur-md rounded-full my-3 shadow-lg">
+    <div
+      className={`relative w-full h-14 overflow-hidden bg-black/5 border-white border-2 backdrop-blur-md rounded-full shadow-lg ${className}`}
+    >
       <div
         className="absolute h-14 left-0 top-0 transition-transform w-full "
         style={{
-          transform: `scaleX(${progress}%)`,
+          transform: `scaleX(${percent}%)`,
           transformOrigin: "left",
-          background: `linear-gradient(90deg, hsla(${130 - progress},80%,30%,100%) 0%, hsla(${
-            80 - progress * 0.8
+          background: `linear-gradient(90deg, hsla(${130 - percent},80%,30%,100%) 0%, hsla(${
+            80 - percent * 0.8
           },80%,40%,70%) 100%)`,
         }}
       ></div>
       <div
         className="absolute h-14 left-0 top-0 transition-transform w-full  bg-black/50"
         style={{
-          transform: `scaleX(${100 - progress}%)`,
+          transform: `scaleX(${100 - percent}%)`,
           transformOrigin: "right",
         }}
       ></div>
-      <div className="absolute h-14 my-2 mx-5 leading-10 left-0 top-0 w-full align-middle font-bold text-2xl drop-shadow-lg">
+      <div
+        className="absolute rounded-full p-2 flex justify-center items-center left-0 top-0 bg-slate-800/50"
+        style={{ width: 52, height: 52 }}
+      >
+        {icon}
+      </div>
+      <div className="absolute h-14 my-2 ml-16 leading-10 left-0 top-0 align-middle font-bold text-2xl drop-shadow-lg">
         {children}
       </div>
     </div>

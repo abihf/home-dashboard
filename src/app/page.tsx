@@ -22,9 +22,10 @@ export default function Home() {
   useLayoutEffect(updateBg, []);
 
   useEffect(() => {
+    // document.documentElement.requestFullscreen();
     const handler = setInterval(updateBg, 30000);
     return () => clearInterval(handler);
-  }, [updateBg]);
+  }, [index]);
 
   const { clockPos, statusPos } = backgroundData[index];
 
