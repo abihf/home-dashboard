@@ -1,27 +1,33 @@
 {
-  "name": "home-dashboard",
+  "name": "@abihf/home-dashboard",
   "version": "0.1.0",
   "private": true,
+  "type": "module",
   "scripts": {
-    "dev": "next dev",
+    "dev": "next dev --turbo",
     "build": "next build",
     "start": "next start",
     "lint": "next lint"
   },
   "dependencies": {
+    "@ibaraki-douji/pixivts": "^2.4.1",
+    "next": "14.0.2",
     "react": "^18",
     "react-dom": "^18",
-    "next": "14.0.2"
+    "systeminformation": "^5.21.17"
   },
   "devDependencies": {
-    "typescript": "^5",
     "@types/node": "^20",
     "@types/react": "^18",
     "@types/react-dom": "^18",
     "autoprefixer": "^10.0.1",
+    "eslint": "^8",
+    "eslint-config-next": "14.0.2",
     "postcss": "^8",
     "tailwindcss": "^3.3.0",
-    "eslint": "^8",
-    "eslint-config-next": "14.0.2"
-  }
+    "typescript": "^5"
+  },
+  "browserslist": [
+    "last 2 versions"
+  ]
 }
