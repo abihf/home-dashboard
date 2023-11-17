@@ -1,5 +1,5 @@
-import { NetUsage, StatusResponse, Usage } from "./types";
-import sys, { Systeminformation } from "systeminformation";
+import sys, { type Systeminformation } from "systeminformation";
+import type { NetUsage, StatusResponse, Usage } from "./types";
 
 export async function POST() {
   const [load, mem, fsSizes, temperature, net] = await Promise.all([
@@ -10,21 +10,18 @@ export async function POST() {
     sys.networkStats("enp4s0"),
   ]);
 
-  const rootFs = fsSizes.find((fs) => fs.mount === "/");
-  const mediaFs = fsSizes.find((fs) => fs.mount === "/media/data");
-
   const ethernet = net[0];
   const netUsage: NetUsage = {
-    // percent: 0,
     lastTx: ethernet.tx_bytes,
     lastRx: ethernet.rx_bytes,
   };
+
   const status: StatusResponse = {
     cpuUsage: load.currentLoad,
     cpuTemp: temperature.main,
     memUsage: { usage: mem.active, percent: (100 * mem.active) / mem.total },
-    diskRoot: diskUsage(rootFs),
-    diskMedia: diskUsage(mediaFs),
+    diskRoot: diskUsage(fsSizes.find((fs) => fs.mount === "/")),
+    diskMedia: diskUsage(fsSizes.find((fs) => fs.mount === "/media/data")),
     netUsage,
   };
   return Response.json(status);

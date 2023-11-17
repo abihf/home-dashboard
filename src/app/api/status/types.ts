@@ -6,7 +6,6 @@ export interface Usage {
 export interface NetUsage {
   lastTx: number;
   lastRx: number;
-  // percent: number;
 }
 
 export interface StatusResponse {

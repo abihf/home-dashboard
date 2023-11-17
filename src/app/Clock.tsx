@@ -1,7 +1,7 @@
 "use client";
-import { useEffect, useLayoutEffect, useState } from "react";
+import { memo, useEffect, useLayoutEffect, useState } from "react";
 
-export function Clock() {
+export const Clock = memo(function Clock() {
   const [time, setTime] = useState<Date>();
   useLayoutEffect(() => setTime(new Date()), []);
   useEffect(() => {
@@ -17,4 +17,4 @@ export function Clock() {
       <p className="text-7xl font-mono font-bold drop-shadow-lg">{time?.toLocaleTimeString()}</p>
     </div>
   );
-}
+});

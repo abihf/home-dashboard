@@ -1,13 +1,13 @@
 "use client";
-import { PropsWithChildren, ReactElement, ReactNode, ReactPropTypes, useEffect, useRef, useState } from "react";
-import { NetUsage, StatusResponse } from "./api/status/types";
-import { CpuIcon } from "../icons/CpuIcon";
-import { FireIcon } from "../icons/FireIcon";
+import { PropsWithChildren, ReactNode, memo, useEffect, useRef, useState } from "react";
 import { ComputerIcon } from "../icons/ComputerIcon";
+import { CpuIcon } from "../icons/CpuIcon";
 import { DiskIcon } from "../icons/DiskIcon";
-import { FilmIcon } from "../icons/FilmIcon";
 import { DownloadIcon } from "../icons/DownloadIcon";
+import { FilmIcon } from "../icons/FilmIcon";
+import { FireIcon } from "../icons/FireIcon";
 import { UploadIcon } from "../icons/UploadIcon";
+import type { NetUsage, StatusResponse } from "./api/status/types";
 
 class FetchError extends Error {
   res: Response;
@@ -17,7 +17,7 @@ class FetchError extends Error {
   }
 }
 
-export function Status() {
+export const Status = memo(function Status() {
   const [status, setStatus] = useState<StatusResponse>();
   const abortController = useRef<AbortController>();
 
@@ -62,44 +62,48 @@ export function Status() {
       <NetworkUsage {...status.netUsage} />
     </div>
   );
-}
+});
 
 interface NetworkData {
   lastRx: number;
   lastTx: number;
   speedRx: number;
   speedTx: number;
-  percent: number;
   lastFetch?: number;
 }
 
 function NetworkUsage({ lastRx, lastTx }: NetUsage) {
-  const networkData = useRef<NetworkData>({ lastRx: 0, lastTx: 0, speedRx: 0, speedTx: 0, percent: 0 });
+  const networkData = useRef<NetworkData>();
 
   const now = Date.now();
-  let netUpdate = true;
-  if (networkData.current.lastFetch) {
-    const deltaTime = now - networkData.current.lastFetch;
+  let shouldUpdate = true;
+  if (networkData.current && networkData.current.lastFetch) {
+    const deltaTime = (now - networkData.current.lastFetch) / 1000;
     // fuck double render
-    if (deltaTime > 100) {
-      networkData.current.speedTx = (1000 * (lastTx - networkData.current.lastTx)) / deltaTime;
-      networkData.current.speedRx = (1000 * (lastRx - networkData.current.lastRx)) / deltaTime;
+    if (deltaTime > 0.1) {
+      networkData.current.speedTx = (lastTx - networkData.current.lastTx) / deltaTime;
+      networkData.current.speedRx = (lastRx - networkData.current.lastRx) / deltaTime;
     } else {
-      netUpdate = false;
+      shouldUpdate = false;
     }
   }
-  if (netUpdate) {
-    networkData.current.lastFetch = now;
-    networkData.current.lastTx = lastTx;
-    networkData.current.lastRx = lastRx;
+
+  if (shouldUpdate) {
+    networkData.current = Object.assign(networkData.current || { speedRx: 0, speedTx: 0 }, {
+      lastFetch: now,
+      lastTx,
+      lastRx,
+    });
   }
+
+  const { speedRx = 0, speedTx = 0 } = networkData.current ?? {};
   return (
     <>
-      <Progress percent={networkData.current.speedRx / 100_000} icon={<DownloadIcon />}>
-        {normalizeSize(networkData.current.speedRx)}Bps
+      <Progress percent={speedRx / 100_000} icon={<DownloadIcon />}>
+        {normalizeSize(speedRx)}Bps
       </Progress>
-      <Progress percent={networkData.current.speedTx / 100_000} icon={<UploadIcon />}>
-        {normalizeSize(networkData.current.speedTx)}Bps
+      <Progress percent={speedTx / 100_000} icon={<UploadIcon />}>
+        {normalizeSize(speedTx)}Bps
       </Progress>
     </>
   );
