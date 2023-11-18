@@ -49,27 +49,29 @@ export default function Home() {
   const [{ clockPos, statusPos, background: bgImg }, nextBgImg, nextBgOpacity] = useScene();
   return (
     <div className="min-h-screen w-full relative">
-      <div className="absolute w-full h-full left-0 top-0" style={{ backgroundImage: `url("./bg/${bgImg}")` }}></div>
-      {nextBgImg && (
-        <div
-          className="absolute w-full h-full left-0 top-0 transition-all"
-          style={{
-            backgroundImage: `url("./bg/${nextBgImg}")`,
-            opacity: nextBgOpacity ?? 0,
-            transitionDuration: "1000ms",
-          }}
-        ></div>
-      )}
+      <div className="absolute w-full h-full left-0 top-0">
+        <div className="absolute w-full h-full left-0 top-0" style={{ backgroundImage: `url("./bg/${bgImg}")` }}></div>
+        {nextBgImg && (
+          <div
+            className="absolute w-full h-full left-0 top-0 transition-all"
+            style={{
+              backgroundImage: `url("./bg/${nextBgImg}")`,
+              opacity: nextBgOpacity ?? 0,
+              transitionDuration: "1000ms",
+            }}
+          ></div>
+        )}
+      </div>
 
       <div
-        className="absolute w-full h-full left-0 top-0 p-3 transition-transform"
+        className="absolute w-full left-0 top-0 p-3 transition-transform"
         style={{ transform: `translateY(${clockPos}px)`, transitionDuration: "1000ms" }}
       >
         <Clock />
       </div>
 
       <div
-        className="absolute w-full h-full left-0 top-0 p-3 transition-transform"
+        className="absolute w-full left-0 top-0 p-3 transition-transform"
         style={{ transform: `translateY(${statusPos}px)`, transitionDuration: "1000ms" }}
       >
         <Status />

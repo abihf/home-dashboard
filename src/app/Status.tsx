@@ -47,8 +47,8 @@ export const Status = memo(function Status() {
       <Progress percent={status.cpuUsage} icon={<CpuIcon />}>
         {status.cpuUsage.toFixed(2)}%
       </Progress>
-      <Progress percent={status.cpuTemp} icon={<FireIcon />}>
-        {status.cpuTemp.toFixed(2)}°C
+      <Progress percent={status.cpuTemp ?? 0} icon={<FireIcon />}>
+        {status.cpuTemp?.toFixed(2) ?? 0}°C
       </Progress>
       <Progress percent={status.memUsage.percent} icon={<ComputerIcon />} className="col-span-2">
         {normalizeSize(status.memUsage.usage)}B
@@ -67,41 +67,41 @@ export const Status = memo(function Status() {
 interface NetworkData {
   lastRx: number;
   lastTx: number;
-  speedRx: number;
-  speedTx: number;
-  lastFetch?: number;
+  speedRx?: number;
+  speedTx?: number;
+  lastFetch: number;
 }
 
 function NetworkUsage({ lastRx, lastTx }: NetUsage) {
-  const networkData = useRef<NetworkData>();
-
   const now = Date.now();
-  let shouldUpdate = true;
-  if (networkData.current && networkData.current.lastFetch) {
-    const deltaTime = (now - networkData.current.lastFetch) / 1000;
-    // fuck double render
-    if (deltaTime > 0.1) {
-      networkData.current.speedTx = (lastTx - networkData.current.lastTx) / deltaTime;
-      networkData.current.speedRx = (lastRx - networkData.current.lastRx) / deltaTime;
-    } else {
-      shouldUpdate = false;
-    }
+  const networkData = useRef<NetworkData>({ lastRx, lastTx, lastFetch: now });
+
+  let shouldUpdate = false;
+  const deltaTime = (now - networkData.current.lastFetch) / 1000;
+  // fuck double render
+  if (deltaTime > 0.1) {
+    networkData.current.speedTx = (lastTx - networkData.current.lastTx) / deltaTime;
+    networkData.current.speedRx = (lastRx - networkData.current.lastRx) / deltaTime;
+    shouldUpdate = true;
   }
 
   if (shouldUpdate) {
-    networkData.current = Object.assign(networkData.current || { speedRx: 0, speedTx: 0 }, {
+    Object.assign(networkData.current, {
       lastFetch: now,
       lastTx,
       lastRx,
     });
   }
 
-  const { speedRx = 0, speedTx = 0 } = networkData.current ?? {};
+  const { speedRx = 0, speedTx = 0 } = networkData.current;
   return (
     <>
+      {/* max 10MBps */}
       <Progress percent={speedRx / 100_000} icon={<DownloadIcon />}>
         {normalizeSize(speedRx)}Bps
       </Progress>
+
+      {/* max 10MBps */}
       <Progress percent={speedTx / 100_000} icon={<UploadIcon />}>
         {normalizeSize(speedTx)}Bps
       </Progress>
