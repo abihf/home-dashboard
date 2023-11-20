@@ -10,10 +10,16 @@ interface Scene {
   statusPos: number;
 }
 const scenesData: Array<Scene> = [
-  { background: "kikuri.jpg", clockPos: 0, statusPos: 500 },
-  { background: "sylvi.jpg", clockPos: 50, statusPos: 610 },
-  { background: "kobayashi.png", clockPos: 0, statusPos: 500 },
+  { background: "paragon-of-human-virtue.png", clockPos: 70, statusPos: 600 },
+  { background: "frieren.jpg", clockPos: 0, statusPos: 750 },
   { background: "memcho.jpg", clockPos: 330, statusPos: 520 },
+  { background: "sylphiette.jpg", clockPos: 50, statusPos: 610 },
+  { background: "esdeath.jpg", clockPos: 350, statusPos: 550 },
+  { background: "kobayashi.png", clockPos: 0, statusPos: 500 },
+  { background: "adashima.jpg", clockPos: 500, statusPos: 700 },
+  { background: "kikuri.jpg", clockPos: 0, statusPos: 500 },
+  { background: "tanya.jpg", clockPos: 400, statusPos: 600 },
+  { background: "yuunanami.jpg", clockPos: 0, statusPos: 650 },
 ];
 
 function useScene(): [Scene, string?, number?] {
