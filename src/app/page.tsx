@@ -1,61 +1,15 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import { Clock } from "./Clock";
 import { Status } from "./Status";
-
-interface Scene {
-  background: string;
-  clockPos: number;
-  statusPos: number;
-}
-const scenesData: Array<Scene> = [
-  { background: "paragon-of-human-virtue.png", clockPos: 70, statusPos: 600 },
-  { background: "frieren.jpg", clockPos: 0, statusPos: 750 },
-  { background: "memcho.jpg", clockPos: 330, statusPos: 520 },
-  { background: "sylphiette.jpg", clockPos: 50, statusPos: 610 },
-  { background: "esdeath.jpg", clockPos: 350, statusPos: 550 },
-  { background: "kobayashi.png", clockPos: 0, statusPos: 500 },
-  { background: "adashima.jpg", clockPos: 500, statusPos: 700 },
-  { background: "kikuri.jpg", clockPos: 0, statusPos: 500 },
-  { background: "tanya.jpg", clockPos: 400, statusPos: 600 },
-  { background: "yuunanami.jpg", clockPos: 0, statusPos: 650 },
-];
-
-function useScene(): [Scene, string?, number?] {
-  const [{ idx, stage }, setBg] = useState({ idx: 0, stage: 0 });
-  const nextIdx = (idx + 1) % scenesData.length;
-
-  useEffect(() => {
-    let handler: NodeJS.Timeout;
-    switch (stage) {
-      case 0:
-        handler = setTimeout(() => setBg({ idx, stage: 1 }), 30000);
-        break;
-
-      case 1:
-        handler = setTimeout(() => setBg({ idx, stage: 2 }), 10);
-        break;
-
-      case 2:
-        handler = setTimeout(() => setBg({ idx: nextIdx, stage: 0 }), 1500);
-        break;
-    }
-    return () => clearTimeout(handler);
-  }, [idx, stage]);
-
-  const current = scenesData[idx];
-  if (stage === 0) return [current];
-
-  const next = scenesData[nextIdx];
-  return [{ ...next, background: current.background }, next.background, stage === 1 ? 0 : 1];
-}
+import { Swipable } from "../components/Swipable";
+import { useScene } from "./scenes";
 
 export default function Home() {
-  const [{ clockPos, statusPos, background: bgImg }, nextBgImg, nextBgOpacity] = useScene();
+  const { clockPos, statusPos, background: bgImg, nextBackground: nextBgImg, nextBgOpacity, onSwipe } = useScene();
   return (
     <div className="min-h-screen w-full relative">
-      <div className="absolute w-full h-full left-0 top-0">
+      <Swipable onSwipe={onSwipe} className="absolute w-full h-full left-0 top-0">
         <div className="absolute w-full h-full left-0 top-0" style={{ backgroundImage: `url("./bg/${bgImg}")` }}></div>
         {nextBgImg && (
           <div
@@ -67,7 +21,7 @@ export default function Home() {
             }}
           ></div>
         )}
-      </div>
+      </Swipable>
 
       <div
         className="absolute w-full left-0 top-0 p-3 transition-transform"

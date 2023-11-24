@@ -1,7 +1,8 @@
 import sys, { type Systeminformation } from "systeminformation";
 import type { NetUsage, StatusResponse, Usage } from "./types";
 
-export async function POST() {
+export const dynamic = "force-dynamic";
+export async function GET() {
   const [load, mem, fsSizes, temperature, net] = await Promise.all([
     sys.currentLoad(),
     sys.mem(),

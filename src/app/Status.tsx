@@ -1,4 +1,3 @@
-"use client";
 import { PropsWithChildren, ReactNode, memo, useEffect, useRef, useState } from "react";
 import { ComputerIcon } from "../icons/ComputerIcon";
 import { CpuIcon } from "../icons/CpuIcon";
@@ -26,7 +25,7 @@ export const Status = memo(function Status() {
       abortController.current.abort();
     }
     abortController.current = new AbortController();
-    const res = await fetch(`./api/status`, { method: "POST", signal: abortController.current.signal });
+    const res = await fetch(`./api/status`, { method: "GET", signal: abortController.current.signal });
     if (res.status !== 200) throw new FetchError(`invalid status response: ${res.status}`, res);
     const data = await res.json();
     setStatus(data);
@@ -43,7 +42,7 @@ export const Status = memo(function Status() {
   }
 
   return (
-    <div className="grid grid-cols-2 gap-4">
+    <div className="grid grid-cols-2 gap-2">
       <Progress percent={status.cpuUsage} icon={<CpuIcon />}>
         {status.cpuUsage.toFixed(2)}%
       </Progress>
@@ -98,12 +97,12 @@ function NetworkUsage({ lastRx, lastTx }: NetUsage) {
     <>
       {/* max 10MBps */}
       <Progress percent={speedRx / 100_000} icon={<DownloadIcon />}>
-        {normalizeSize(speedRx)}Bps
+        {normalizeSize(speedRx, 0)}B/s
       </Progress>
 
       {/* max 10MBps */}
       <Progress percent={speedTx / 100_000} icon={<UploadIcon />}>
-        {normalizeSize(speedTx)}Bps
+        {normalizeSize(speedTx, 0)}B/s
       </Progress>
     </>
   );
@@ -134,10 +133,10 @@ function Progress({ percent, children, icon = "", className = "" }: ProgressProp
 
   return (
     <div
-      className={`relative w-full h-14 overflow-hidden bg-black/5 border-white border-2 backdrop-blur-md rounded-full shadow-lg ${className}`}
+      className={`relative w-full h-16 overflow-hidden bg-black/5 border-white border-2 backdrop-blur-md rounded-full shadow-lg ${className}`}
     >
       <div
-        className="absolute h-14 left-0 top-0 transition-transform w-full "
+        className="absolute h-16 left-0 top-0 transition-transform w-full "
         style={{
           transform: `scaleX(${percent}%)`,
           transformOrigin: "left",
@@ -147,19 +146,19 @@ function Progress({ percent, children, icon = "", className = "" }: ProgressProp
         }}
       ></div>
       <div
-        className="absolute h-14 left-0 top-0 transition-transform w-full  bg-black/50"
+        className="absolute h-16 left-0 top-0 transition-transform w-full  bg-black/40"
         style={{
           transform: `scaleX(${100 - percent}%)`,
           transformOrigin: "right",
         }}
       ></div>
       <div
-        className="absolute rounded-full p-2 flex justify-center items-center left-0 top-0 bg-slate-800/50"
-        style={{ width: 52, height: 52 }}
+        className="absolute rounded-full p-3 flex justify-center items-center left-0 top-0 bg-black/30"
+        style={{ width: 60, height: 60 }}
       >
         {icon}
       </div>
-      <div className="absolute h-14 my-2 ml-16 leading-10 left-0 top-0 align-middle font-bold text-2xl drop-shadow-lg">
+      <div className="absolute h-16 my-2 ml-16 leading-10 left-0 top-0 align-middle text-4xl font-semibold drop-shadow-lg">
         {children}
       </div>
     </div>
