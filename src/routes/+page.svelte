@@ -3,8 +3,15 @@
 	import Clock from './Clock.svelte';
 	import Status from './Status.svelte';
 	import { handleMount, scene } from './scenes';
+	import { createEventSource } from '$lib/eventSource';
 
 	onMount(handleMount);
+	onMount(() => {
+		const reloader = createEventSource('/api/reload');
+		return reloader.subscribe((msg) => {
+			if (msg?.time) location.reload();
+		});
+	});
 </script>
 
 <div class="absolute w-full h-full left-0 top-0">

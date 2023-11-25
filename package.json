@@ -4,6 +4,7 @@
 	"license": "LGPL-3.0-or-later",
 	"private": true,
 	"scripts": {
+		"start": "node build",
 		"dev": "vite dev",
 		"build": "vite build",
 		"preview": "vite preview",
@@ -36,5 +37,8 @@
 		"vite": "^4.4.2",
 		"vitest": "^0.32.2"
 	},
-	"type": "module"
+	"type": "module",
+	"volta": {
+		"node": "20.10.0"
+	}
 }

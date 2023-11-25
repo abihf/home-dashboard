@@ -1,11 +1,12 @@
-<script lang="ts">
-	import { onMount } from 'svelte';
-	let now = new Date();
+<svelte:options runes={true} />
 
-	onMount(() => {
+<script lang="ts">
+	let now = $state(new Date());
+
+	$effect(() => {
 		const handler = setInterval(() => {
 			now = new Date();
-		}, 1000);
+		}, 100);
 		return () => clearInterval(handler);
 	});
 </script>
