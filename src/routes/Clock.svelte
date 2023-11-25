@@ -12,6 +12,7 @@
 </script>
 
 <div
+	title="Date time"
 	class="mb-5 text-center bg-black/50 rounded-xl border-white border-2 p-2 backdrop-blur-lg shadow-lg"
 >
 	<p class="text-4xl font-mono mb-2 font-semibold drop-shadow-lg">
