@@ -8,6 +8,8 @@
 </script>
 
 <div
+	role="progressbar"
+	aria-valuenow={percent}
 	class={`relative w-full h-16 overflow-hidden bg-black/5 border-white border-2 backdrop-blur-md rounded-full shadow-lg ${className}`}
 >
 	<div

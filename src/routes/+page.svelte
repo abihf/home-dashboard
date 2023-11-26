@@ -1,9 +1,10 @@
-<script>
+<script lang="ts">
 	import { onMount } from 'svelte';
 	import Clock from './Clock.svelte';
 	import Status from './Status.svelte';
-	import { handleMount, scene } from './scenes';
+	import { handleMount, scene, swipeScene } from './scenes';
 	import { createEventSource } from '$lib/eventSource';
+	import Swipable from '$lib/Swipable.svelte';
 
 	onMount(handleMount);
 	onMount(() => {
@@ -12,9 +13,12 @@
 			if (msg?.time) location.reload();
 		});
 	});
+	function handleSwipe(ev: CustomEvent<{ deltaX: number }>) {
+		swipeScene(ev.detail.deltaX > 0 ? -1 : 1);
+	}
 </script>
 
-<div class="absolute w-full h-full left-0 top-0">
+<Swipable className="absolute w-full h-full left-0 top-0" on:swipe={handleSwipe}>
 	<div
 		class="absolute w-full h-full left-0 top-0"
 		style="background-image: url('./bg/{$scene.background}')"
@@ -26,7 +30,7 @@
 				0}"
 		></div>
 	{/if}
-</div>
+</Swipable>
 <div
 	class="absolute w-full left-0 top-0 p-3 transition-transform transition-1s"
 	style="transform: translateY({$scene.clockPos}px)"

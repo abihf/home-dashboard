@@ -71,6 +71,10 @@ export function handleMount() {
 	};
 }
 
+export function swipeScene(dir: SwipeDir) {
+	state.update((cur) => ({ idx: cur.idx, stage: SceneStage.PREPARE, dir }));
+}
+
 const derived = wrongDerived as <S, T>(store: Readable<S>, fn: (value: S) => T) => Readable<T>;
 
 export const scene = derived(state, ({ idx, stage, dir }) => {
