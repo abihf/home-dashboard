@@ -6,7 +6,7 @@
 	$effect(() => {
 		const handler = setInterval(() => {
 			now = new Date();
-		}, 100);
+		}, 200);
 		return () => clearInterval(handler);
 	});
 </script>

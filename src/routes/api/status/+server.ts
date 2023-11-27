@@ -34,13 +34,12 @@ export const GET: RequestHandler = async () => {
 
 	const stream = new ReadableStream({
 		start(controller) {
-			controller.enqueue('event: status\n');
 			async function queryAndUpdate() {
 				const data = await query();
 				const json = JSON.stringify(data);
 				if (!canceled) controller.enqueue('data: ' + json + '\n\n');
 			}
-			handler = setInterval(queryAndUpdate, 2000);
+			handler = setInterval(queryAndUpdate, 1000);
 			queryAndUpdate();
 		},
 		cancel() {

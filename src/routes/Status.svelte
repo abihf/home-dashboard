@@ -1,6 +1,5 @@
 <script lang="ts">
 	import Progress from './Progress.svelte';
-
 	import { normalizeSize, status } from './status';
 </script>
 
@@ -83,7 +82,6 @@
 				d="M21.75 17.25v-.228a4.5 4.5 0 00-.12-1.03l-2.268-9.64a3.375 3.375 0 00-3.285-2.602H7.923a3.375 3.375 0 00-3.285 2.602l-2.268 9.64a4.5 4.5 0 00-.12 1.03v.228m19.5 0a3 3 0 01-3 3H5.25a3 3 0 01-3-3m19.5 0a3 3 0 00-3-3H5.25a3 3 0 00-3 3m16.5 0h.008v.008h-.008v-.008zm-3 0h.008v.008h-.008v-.008z"
 			/>
 		</svg>
-
 		{normalizeSize($status.diskRoot.usage)}B
 	</Progress>
 
@@ -122,7 +120,6 @@
 				d="M12 9.75v6.75m0 0l-3-3m3 3l3-3m-8.25 6a4.5 4.5 0 01-1.41-8.775 5.25 5.25 0 0110.233-2.33 3 3 0 013.758 3.848A3.752 3.752 0 0118 19.5H6.75z"
 			/>
 		</svg>
-
 		{normalizeSize($status.download.usage, 0)}B/s
 	</Progress>
 
@@ -142,7 +139,6 @@
 				d="M12 16.5V9.75m0 0l3 3m-3-3l-3 3M6.75 19.5a4.5 4.5 0 01-1.41-8.775 5.25 5.25 0 0110.233-2.33 3 3 0 013.758 3.848A3.752 3.752 0 0118 19.5H6.75z"
 			/>
 		</svg>
-
 		{normalizeSize($status.upload.usage, 0)}B/s
 	</Progress>
 </div>
