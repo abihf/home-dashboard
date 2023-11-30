@@ -3,7 +3,11 @@
 	export let className: string = '';
 	let point = { x: 0, y: 0 };
 
-	const dispatch = createEventDispatcher<{ swipe: { deltaX: number } }>();
+	interface Events {
+		swipe: { deltaX: number };
+	}
+
+	const dispatch = createEventDispatcher<Events>();
 	function handleTouchStart(ev: TouchEvent) {
 		if (ev.targetTouches.length !== 1) return ev.preventDefault();
 		const touch = ev.targetTouches.item(0)!;

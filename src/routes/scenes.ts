@@ -44,7 +44,7 @@ interface SceneState {
 
 const state = writable<SceneState>({ idx: 0, stage: SceneStage.READY });
 
-export function handleMount() {
+export function startSceneChange() {
 	let handler: NodeJS.Timeout;
 	const unsubscribeFn = state.subscribe(({ idx, stage, dir }) => {
 		clearTimeout(handler);

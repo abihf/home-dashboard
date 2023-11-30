@@ -1,16 +1,17 @@
 <script lang="ts">
+	import Swipable from '$lib/Swipable.svelte';
+	import { createEventSource } from '$lib/eventSource';
+	import { onMount } from 'svelte';
 	import Clock from './Clock.svelte';
 	import Status from './Status.svelte';
-	import { handleMount, scene, swipeScene } from './scenes';
-	import { createEventSource } from '$lib/eventSource';
-	import Swipable from '$lib/Swipable.svelte';
-	$effect(handleMount);
-	$effect(() => {
-		const reloader = createEventSource('/api/reload');
-		return reloader.subscribe((msg) => {
+	import { scene, startSceneChange, swipeScene } from './scenes';
+	
+	onMount(startSceneChange);
+	onMount(() =>
+		createEventSource('/api/reload').subscribe((msg) => {
 			if (msg?.time) location.reload();
-		});
-	});
+		})
+	);
 	function handleSwipe(ev: CustomEvent<{ deltaX: number }>) {
 		swipeScene(ev.detail.deltaX > 0 ? -1 : 1);
 	}
