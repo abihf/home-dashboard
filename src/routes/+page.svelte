@@ -5,7 +5,7 @@
 	import Clock from './Clock.svelte';
 	import Status from './Status.svelte';
 	import { scene, startSceneChange, swipeScene } from './scenes';
-	
+
 	onMount(startSceneChange);
 	onMount(() =>
 		createEventSource('/api/reload').subscribe((msg) => {

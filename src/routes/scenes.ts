@@ -1,4 +1,4 @@
-import { derived as wrongDerived, writable, type Readable } from 'svelte/store';
+import { writable, derived as wrongDerived, type Readable } from 'svelte/store';
 
 interface SceneData {
 	background: string;
@@ -25,7 +25,7 @@ export const enum SwipeDir {
 	RIGHT = 1
 }
 
-interface Scene extends SceneData {
+export interface Scene extends SceneData {
 	nextBackground?: string;
 	nextBgOpacity?: number;
 }
@@ -45,7 +45,7 @@ interface SceneState {
 const state = writable<SceneState>({ idx: 0, stage: SceneStage.READY });
 
 export function startSceneChange() {
-	let handler: NodeJS.Timeout;
+	let handler: number;
 	const unsubscribeFn = state.subscribe(({ idx, stage, dir }) => {
 		clearTimeout(handler);
 		const nextIdx = (idx + (dir ?? 1) + scenesData.length) % scenesData.length;

@@ -1,6 +1,8 @@
 <script lang="ts">
+	import { readable } from 'svelte/store';
 	import Progress from './Progress.svelte';
-	import { normalizeSize, status } from './status';
+	import { initialStatus, normalizeSize, fetchStatus, type Status } from './status';
+	const status = readable<Status>(initialStatus, fetchStatus);
 </script>
 
 <div class="grid grid-cols-2 gap-2">
