@@ -5,15 +5,16 @@ Before=graphical.target
 
 [Service]
 WorkingDirectory=/home/abi/play/js/home-dashboard
-ExecStart=/home/abi/.volta/bin/npm start
+ExecStart=/home/abi/.local/bin/bun ./build/index.js
+Environment=ORIGIN=http://127.0.0.1:3000
+Environment=HOST=127.0.0.1
 Restart=always
 RestartSec=10
 StandardOutput=syslog
 StandardError=syslog
 SyslogIdentifier=homedashboard
 User=abi
-Group=root
-
+Group=abi
 
 [Install]
 WantedBy=multi-user.target

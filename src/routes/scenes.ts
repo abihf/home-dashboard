@@ -1,4 +1,4 @@
-import { writable, derived as wrongDerived, type Readable } from 'svelte/store';
+import { derived, writable } from 'svelte/store';
 
 interface SceneData {
 	background: string;
@@ -45,7 +45,7 @@ interface SceneState {
 const state = writable<SceneState>({ idx: 0, stage: SceneStage.READY });
 
 export function startSceneChange() {
-	let handler: number;
+	let handler: number | NodeJS.Timeout;
 	const unsubscribeFn = state.subscribe(({ idx, stage, dir }) => {
 		clearTimeout(handler);
 		const nextIdx = (idx + (dir ?? 1) + scenesData.length) % scenesData.length;
@@ -74,8 +74,6 @@ export function startSceneChange() {
 export function swipeScene(dir: SwipeDir) {
 	state.update((cur) => ({ idx: cur.idx, stage: SceneStage.PREPARE, dir }));
 }
-
-const derived = wrongDerived as <S, T>(store: Readable<S>, fn: (value: S) => T) => Readable<T>;
 
 export const scene = derived(state, ({ idx, stage, dir }) => {
 	const current = scenesData[idx];

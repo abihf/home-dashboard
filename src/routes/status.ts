@@ -14,8 +14,8 @@ export const initialStatus: Status = {
 	diskRoot: zero,
 	diskMedia: zero,
 	upload: zero,
-	download: zero,
-}
+	download: zero
+};
 
 export const fetchStatus: StartStopNotifier<Status> = function fetchStatus(set) {
 	let lastFetch: number, lastRx: number, lastTx: number;

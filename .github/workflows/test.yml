@@ -5,19 +5,17 @@ name: Node.js CI
 
 on:
   push:
-    branches: ['main']
+    branches: ["main"]
   pull_request:
-    branches: ['main']
+    branches: ["main"]
 
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-      - name: Setup node
-        uses: actions/setup-node@v3
-        with:
-          node-version: 20
-          cache: 'npm'
-      - run: npm ci
-      - run: npm test
+      - name: Setup bun
+        uses: oven-sh/setup-bun@v1
+      - run: bun install
+      - run: bunx playwright install firefox
+      - run: bun run test
