@@ -19,7 +19,7 @@
 	"devDependencies": {
 		"@playwright/browser-firefox": "^1.40.0",
 		"@playwright/test": "^1.28.1",
-		"@sveltejs/adapter-node": "^2.0.0",
+		"@sveltejs/adapter-node": "^4.0.0",
 		"@sveltejs/kit": "^2.0.0",
 		"@typescript-eslint/eslint-plugin": "^6.0.0",
 		"@typescript-eslint/parser": "^6.0.0",
@@ -43,6 +43,6 @@
 	},
 	"type": "module",
 	"volta": {
-		"node": "20.10.0"
+		"node": "20.11.0"
 	}
 }
