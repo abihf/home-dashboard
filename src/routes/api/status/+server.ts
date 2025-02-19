@@ -6,9 +6,9 @@ async function query() {
 	const [load, mem, fsSizes, temperature, net] = await Promise.all([
 		sys.currentLoad(),
 		sys.mem(),
-		sys.fsSize(),
+		sys.fsSize([{mount:'/'}, {mount:'/media/data'}]),
 		sys.cpuTemperature(),
-		sys.networkStats('enp4s0')
+		sys.networkStats('eth0')
 	]);
 
 	const ethernet = net[0];
