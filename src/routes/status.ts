@@ -1,7 +1,7 @@
-import type { StartStopNotifier } from 'svelte/store';
-import type { StatusResponse, Usage } from './api/status/types';
+import type { StartStopNotifier } from "svelte/store";
+import type { StatusResponse, Usage } from "./api/status/types";
 
-export interface Status extends Omit<StatusResponse, 'netUsage'> {
+export interface Status extends Omit<StatusResponse, "netUsage"> {
 	upload: Usage;
 	download: Usage;
 }
@@ -14,14 +14,18 @@ export const initialStatus: Status = {
 	diskRoot: zero,
 	diskMedia: zero,
 	upload: zero,
-	download: zero
+	download: zero,
 };
 
-export const fetchStatus: StartStopNotifier<Status> = function fetchStatus(set) {
+export const fetchStatus: StartStopNotifier<Status> = function fetchStatus(
+	set,
+) {
 	let lastFetch: number, lastRx: number, lastTx: number;
-	const eventSource = new EventSource('/api/status');
-	eventSource.addEventListener('error', (err) => console.error('status error', err));
-	eventSource.addEventListener('message', (msg) => {
+	const eventSource = new EventSource("/api/status");
+	eventSource.addEventListener("error", (err) =>
+		console.error("status error", err),
+	);
+	eventSource.addEventListener("message", (msg) => {
 		const { netUsage, ...data }: StatusResponse = JSON.parse(msg.data);
 		let upload: Usage = zero;
 		let download: Usage = zero;
@@ -39,12 +43,16 @@ export const fetchStatus: StartStopNotifier<Status> = function fetchStatus(set) 
 	return () => eventSource.close();
 };
 
-function netSpeed(newValue: number, oldValue: number, deltaTime: number): Usage {
+function netSpeed(
+	newValue: number,
+	oldValue: number,
+	deltaTime: number,
+): Usage {
 	const speed = (newValue - oldValue) / deltaTime;
 	return { usage: speed, percent: speed / 100_000 };
 }
 
-const SIZE_SUFFIX = 'KMGT';
+const SIZE_SUFFIX = "KMGT";
 export function normalizeSize(size: number, digits = 2) {
 	let suffixIdx = -1;
 	let normalized = size;
@@ -52,6 +60,6 @@ export function normalizeSize(size: number, digits = 2) {
 		normalized /= 1024;
 		suffixIdx++;
 	}
-	const suffix = suffixIdx >= 0 ? SIZE_SUFFIX[suffixIdx] : '';
+	const suffix = suffixIdx >= 0 ? SIZE_SUFFIX[suffixIdx] : "";
 	return `${normalized.toFixed(digits)} ${suffix}`;
 }

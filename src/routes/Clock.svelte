@@ -1,14 +1,14 @@
 <svelte:options runes={true} />
 
 <script lang="ts">
-	let now = $state(new Date());
+let now = $state(new Date());
 
-	$effect(() => {
-		const handler = setInterval(() => {
-			now = new Date();
-		}, 200);
-		return () => clearInterval(handler);
-	});
+$effect(() => {
+	const handler = setInterval(() => {
+		now = new Date();
+	}, 200);
+	return () => clearInterval(handler);
+});
 </script>
 
 <div

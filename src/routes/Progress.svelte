@@ -1,10 +1,10 @@
 <script lang="ts">
-	import { css } from '$lib/css';
+import { css } from "$lib/css";
 
-	export let percent: number;
-	export let className: string = '';
+export let percent: number;
+export let className: string = "";
 
-	$: if (percent > 100) percent = 100;
+$: if (percent > 100) percent = 100;
 </script>
 
 <div
