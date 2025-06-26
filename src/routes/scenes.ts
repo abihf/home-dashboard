@@ -1,4 +1,4 @@
-import { writable, derived as wrongDerived, type Readable } from "svelte/store";
+import { writable, derived } from "svelte/store";
 
 interface SceneData {
 	background: string;
@@ -6,19 +6,8 @@ interface SceneData {
 	statusPos: number;
 }
 
-const SCENE_INTERVAL = 30_000;
-export const scenesData: Array<SceneData> = [
-	{ background: "paragon-of-human-virtue.png", clockPos: 70, statusPos: 600 },
-	{ background: "frieren.jpg", clockPos: 100, statusPos: 720 },
-	{ background: "memcho.jpg", clockPos: 330, statusPos: 520 },
-	{ background: "sylphiette.jpg", clockPos: 50, statusPos: 610 },
-	{ background: "esdeath.jpg", clockPos: 350, statusPos: 550 },
-	{ background: "kobayashi.png", clockPos: 0, statusPos: 500 },
-	{ background: "adashima.jpg", clockPos: 500, statusPos: 700 },
-	{ background: "kikuri.jpg", clockPos: 0, statusPos: 500 },
-	{ background: "tanya.jpg", clockPos: 400, statusPos: 600 },
-	{ background: "yuunanami.jpg", clockPos: 20, statusPos: 650 },
-];
+const SCENE_INTERVAL = 2_000;
+let scenesData: Array<SceneData> = [{ background: "", clockPos: 0, statusPos: 500 }];
 
 export const enum SwipeDir {
 	LEFT = -1,
@@ -31,6 +20,7 @@ export interface Scene extends SceneData {
 }
 
 const enum SceneStage {
+	LOADING,
 	READY,
 	PREPARE,
 	TRANSITION,
@@ -42,9 +32,15 @@ interface SceneState {
 	dir?: SwipeDir;
 }
 
-const state = writable<SceneState>({ idx: 0, stage: SceneStage.READY });
+const state = writable<SceneState>({ idx: 0, stage: SceneStage.LOADING });
 
 export function startSceneChange() {
+	fetch("/bg/list.json?t=" + Date.now())
+		.then((res) => res.json())
+		.then((data) => {
+			scenesData = data;
+			state.set({ idx: 0, stage: SceneStage.READY });
+		});
 	let handler: number;
 	const unsubscribeFn = state.subscribe(({ idx, stage, dir }) => {
 		clearTimeout(handler);
@@ -53,17 +49,17 @@ export function startSceneChange() {
 		switch (stage) {
 			case SceneStage.READY:
 				handler = setTimeout(
-					() => state.set({ idx, stage: 1 }),
+					() => state.set({ idx, stage: SceneStage.PREPARE }),
 					SCENE_INTERVAL,
 				);
 				break;
 
 			case SceneStage.PREPARE:
-				handler = setTimeout(() => state.set({ idx, stage: 2, dir }), 10);
+				handler = setTimeout(() => state.set({ idx, stage: SceneStage.TRANSITION, dir }), 10);
 				break;
 
 			case SceneStage.TRANSITION:
-				handler = setTimeout(() => state.set({ idx: nextIdx, stage: 0 }), 1500);
+				handler = setTimeout(() => state.set({ idx: nextIdx, stage: SceneStage.READY }), 1500);
 				break;
 		}
 	});
@@ -78,17 +74,12 @@ export function swipeScene(dir: SwipeDir) {
 	state.update((cur) => ({ idx: cur.idx, stage: SceneStage.PREPARE, dir }));
 }
 
-const derived = wrongDerived as <S, T>(
-	store: Readable<S>,
-	fn: (value: S) => T,
-) => Readable<T>;
-
 export const scene = derived(state, ({ idx, stage, dir }) => {
 	const current = scenesData[idx];
 	let scene: Scene = {
 		...current,
 	};
-	if (stage === 0) return scene;
+	if (stage === SceneStage.LOADING || stage === SceneStage.READY) return scene;
 
 	const nextIdx = (idx + (dir ?? 1) + scenesData.length) % scenesData.length;
 	const next = scenesData[nextIdx];
@@ -96,7 +87,7 @@ export const scene = derived(state, ({ idx, stage, dir }) => {
 		...next,
 		background: current.background,
 		nextBackground: next.background,
-		nextBgOpacity: stage === 1 ? 0 : 1,
+		nextBgOpacity: stage === SceneStage.PREPARE ? 0 : 1,
 	};
 	return scene;
 });

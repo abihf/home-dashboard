@@ -12,12 +12,12 @@ onMount(() =>
 		if (msg?.time) location.reload();
 	}),
 );
-function handleSwipe(ev: CustomEvent<{ deltaX: number }>) {
-	swipeScene(ev.detail.deltaX > 0 ? -1 : 1);
+function handleSwipe(ev: { deltaX: number }) {
+	swipeScene(ev.deltaX > 0 ? -1 : 1);
 }
 </script>
 
-<Swipable className="absolute w-full h-full left-0 top-0" on:swipe={handleSwipe}>
+<Swipable class="absolute w-full h-full left-0 top-0" onswipe={handleSwipe}>
 	<div
 		class="absolute w-full h-full left-0 top-0"
 		style="background-image: url('./bg/{$scene.background}')"
