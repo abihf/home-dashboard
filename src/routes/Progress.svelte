@@ -2,7 +2,7 @@
 import { css } from "$lib/css";
 
 export let percent: number;
-export let className: string = "";
+export const className: string = "";
 
 $: if (percent > 100) percent = 100;
 </script>

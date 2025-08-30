@@ -7,7 +7,7 @@ interface Props {
 	children: Snippet;
 }
 const { class: className = "", onswipe, children }: Props = $props();
-let point = $state({ x: 0, y: 0 });
+const point = $state({ x: 0, y: 0 });
 
 function handleTouchStart(ev: TouchEvent) {
 	if (ev.targetTouches.length !== 1) return ev.preventDefault();

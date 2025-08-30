@@ -1,4 +1,4 @@
-import { writable, derived } from "svelte/store";
+import { derived, writable } from "svelte/store";
 
 interface SceneData {
 	background: string;
@@ -6,10 +6,12 @@ interface SceneData {
 	statusPos: number;
 }
 
-const SCENE_INTERVAL = 2_000;
-let scenesData: Array<SceneData> = [{ background: "", clockPos: 0, statusPos: 500 }];
+const SCENE_INTERVAL = 20_000;
+let scenesData: Array<SceneData> = [
+	{ background: "", clockPos: 0, statusPos: 500 },
+];
 
-export const enum SwipeDir {
+export enum SwipeDir {
 	LEFT = -1,
 	RIGHT = 1,
 }
@@ -19,7 +21,7 @@ export interface Scene extends SceneData {
 	nextBgOpacity?: number;
 }
 
-const enum SceneStage {
+enum SceneStage {
 	LOADING,
 	READY,
 	PREPARE,
@@ -55,11 +57,17 @@ export function startSceneChange() {
 				break;
 
 			case SceneStage.PREPARE:
-				handler = setTimeout(() => state.set({ idx, stage: SceneStage.TRANSITION, dir }), 10);
+				handler = setTimeout(
+					() => state.set({ idx, stage: SceneStage.TRANSITION, dir }),
+					10,
+				);
 				break;
 
 			case SceneStage.TRANSITION:
-				handler = setTimeout(() => state.set({ idx: nextIdx, stage: SceneStage.READY }), 1500);
+				handler = setTimeout(
+					() => state.set({ idx: nextIdx, stage: SceneStage.READY }),
+					1500,
+				);
 				break;
 		}
 	});

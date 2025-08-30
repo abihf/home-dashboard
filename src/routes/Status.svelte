@@ -2,11 +2,12 @@
 import { readable } from "svelte/store";
 import Progress from "./Progress.svelte";
 import {
+	fetchStatus,
 	initialStatus,
 	normalizeSize,
-	fetchStatus,
 	type Status,
 } from "./status";
+
 const status = readable<Status>(initialStatus, fetchStatus);
 </script>
 

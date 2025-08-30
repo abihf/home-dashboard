@@ -1,5 +1,5 @@
-import sys, { type Systeminformation } from "systeminformation";
 import type { RequestHandler } from "@sveltejs/kit";
+import sys, { type Systeminformation } from "systeminformation";
 import type { NetUsage, StatusResponse, Usage } from "./types";
 
 async function query() {

@@ -1,7 +1,7 @@
 <script lang="ts">
-import Swipable from "$lib/Swipable.svelte";
-import { createEventSource } from "$lib/eventSource";
 import { onMount } from "svelte";
+import { createEventSource } from "$lib/eventSource";
+import Swipable from "$lib/Swipable.svelte";
 import Clock from "./Clock.svelte";
 import Status from "./Status.svelte";
 import { scene, startSceneChange, swipeScene } from "./scenes";
