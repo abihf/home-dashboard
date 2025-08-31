@@ -37,7 +37,7 @@ export const GET: RequestHandler = async () => {
 			async function queryAndUpdate() {
 				const data = await query();
 				const json = JSON.stringify(data);
-				if (!canceled) controller.enqueue("data: " + json + "\n\n");
+				if (!canceled) controller.enqueue(`data: ${json}\n\n`);
 			}
 			handler = setInterval(queryAndUpdate, 1000);
 			queryAndUpdate();

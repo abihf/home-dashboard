@@ -37,7 +37,7 @@ interface SceneState {
 const state = writable<SceneState>({ idx: 0, stage: SceneStage.LOADING });
 
 export function startSceneChange() {
-	fetch("/bg/list.json?t=" + Date.now())
+	fetch(`/bg/list.json?t=${Date.now()}`)
 		.then((res) => res.json())
 		.then((data) => {
 			scenesData = data;

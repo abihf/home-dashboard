@@ -10,14 +10,14 @@ const { class: className = "", onswipe, children }: Props = $props();
 const point = $state({ x: 0, y: 0 });
 
 function handleTouchStart(ev: TouchEvent) {
-	if (ev.targetTouches.length !== 1) return ev.preventDefault();
-	const touch = ev.targetTouches.item(0)!;
+	const touch = ev.changedTouches.item(0);
+	if (!touch) return ev.preventDefault();
 	point.x = touch.pageX;
 	point.y = touch.pageY;
 }
 function handleTouchEnd(ev: TouchEvent) {
-	if (ev.changedTouches.length !== 1) return ev.preventDefault();
-	const touch = ev.changedTouches.item(0)!;
+	const touch = ev.changedTouches.item(0);
+	if (!touch) return ev.preventDefault();
 	const deltaX = touch.pageX - point.x;
 	const deltaY = touch.pageY - point.y;
 	if (deltaX === 0 || Math.abs(deltaX) < Math.abs(deltaY)) return;
