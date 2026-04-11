@@ -5,7 +5,7 @@ export interface Status extends Omit<StatusResponse, "netUsage"> {
 	upload: Usage;
 	download: Usage;
 }
-const zero: Usage = { percent: 0, usage: 0 };
+const zero: Usage = { percent: 0, usage: 0n };
 
 export const initialStatus: Status = {
 	cpuUsage: 0,
@@ -20,22 +20,22 @@ export const initialStatus: Status = {
 export const fetchStatus: StartStopNotifier<Status> = function fetchStatus(
 	set,
 ) {
-	let lastFetch: number, lastRx: number, lastTx: number;
+	let lastFetchMs: bigint, lastRx: bigint, lastTx: bigint;
 	const eventSource = new EventSource("/api/status");
 	eventSource.addEventListener("error", (err) =>
 		console.error("status error", err),
 	);
 	eventSource.addEventListener("message", (msg) => {
-		const { netUsage, ...data }: StatusResponse = JSON.parse(msg.data);
+		const { netUsage, ...data }: StatusResponse = JSON.parse(msg.data, parseBigIntReviver);
 		let upload: Usage = zero;
 		let download: Usage = zero;
-		const now = Date.now();
-		if (lastFetch) {
-			const deltaTime = (now - lastFetch) / 1000;
-			upload = netSpeed(netUsage.lastTx, lastTx, deltaTime);
-			download = netSpeed(netUsage.lastRx, lastRx, deltaTime);
+		const nowMs = BigInt(Date.now());
+		if (lastFetchMs) {
+			const deltaMs = nowMs - lastFetchMs;
+			upload = netSpeed(netUsage.lastTx, lastTx, deltaMs);
+			download = netSpeed(netUsage.lastRx, lastRx, deltaMs);
 		}
-		lastFetch = now;
+		lastFetchMs = nowMs;
 		lastTx = netUsage.lastTx;
 		lastRx = netUsage.lastRx;
 		set({ ...data, upload, download });
@@ -44,22 +44,32 @@ export const fetchStatus: StartStopNotifier<Status> = function fetchStatus(
 };
 
 function netSpeed(
-	newValue: number,
-	oldValue: number,
-	deltaTime: number,
+	newValue: bigint,
+	oldValue: bigint,
+	deltaMs: bigint,
 ): Usage {
-	const speed = (newValue - oldValue) / deltaTime;
-	return { usage: speed, percent: speed / 100_000 };
+	if (deltaMs <= 0n) return zero;
+
+	const diff = newValue > oldValue ? newValue - oldValue : 0n;
+	const speed = (diff * 1000n) / deltaMs;
+	return { usage: speed, percent: Number(speed) / 100_000 };
 }
 
 const SIZE_SUFFIX = "KMGT";
-export function normalizeSize(size: number, digits = 2) {
+export function normalizeSize(size: bigint | number, digits = 2) {
 	let suffixIdx = -1;
-	let normalized = size;
+	let normalized = Number(size);
 	while (normalized > 1024) {
 		normalized /= 1024;
 		suffixIdx++;
 	}
 	const suffix = suffixIdx >= 0 ? SIZE_SUFFIX[suffixIdx] : "";
 	return `${normalized.toFixed(digits)} ${suffix}`;
+}
+
+function parseBigIntReviver(_: string, value: unknown) {
+	if (typeof value === "string" && /^\d+n$/.test(value)) {
+		return BigInt(value.slice(0, -1));
+	}
+	return value;
 }
