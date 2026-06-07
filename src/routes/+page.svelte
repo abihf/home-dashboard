@@ -1,44 +1,82 @@
+<svelte:options runes={true} />
+
 <script lang="ts">
-import { onMount } from "svelte";
 // import { createEventSource } from "$lib/eventSource";
 import Swipable from "$lib/Swipable.svelte";
 import Clock from "./Clock.svelte";
 import Status from "./Status.svelte";
-import { scene, startSceneChange, swipeScene } from "./scenes";
+import {
+	getScene,
+	initialSceneState,
+	initialScenesData,
+	loadScenesData,
+	sceneDelay,
+	SceneStage,
+	SwipeDir,
+	nextSceneState,
+	swipeScene,
+} from "./scenes";
 
-onMount(startSceneChange);
+let scenesData = $state(initialScenesData);
+let sceneState = $state(initialSceneState);
+const scene = $derived.by(() => getScene(sceneState, scenesData));
+
+$effect(() => {
+	let active = true;
+
+	loadScenesData().then((data) => {
+		if (!active) return;
+		scenesData = data;
+		sceneState = { idx: 0, stage: SceneStage.READY };
+	});
+
+	return () => {
+		active = false;
+	};
+});
+
+$effect(() => {
+	const delay = sceneDelay(sceneState.stage);
+	if (delay === undefined) return;
+
+	const snapshot = { idx: sceneState.idx, stage: sceneState.stage, dir: sceneState.dir };
+	const handler = setTimeout(() => {
+		sceneState = nextSceneState(snapshot, scenesData);
+	}, delay);
+
+	return () => clearTimeout(handler);
+});
 // onMount(() =>
 // 	createEventSource("/api/reload").subscribe((msg) => {
 // 		if (msg?.time) location.reload();
 // 	}),
 // );
 function handleSwipe(ev: { deltaX: number }) {
-	swipeScene(ev.deltaX > 0 ? -1 : 1);
+	sceneState = swipeScene(sceneState, ev.deltaX > 0 ? SwipeDir.LEFT : SwipeDir.RIGHT);
 }
 </script>
 
 <Swipable class="absolute w-full h-full left-0 top-0" onswipe={handleSwipe}>
 	<div
 		class="absolute w-full h-full left-0 top-0"
-		style="background-image: url('./bg/{$scene.background}')"
+		style={`background-image: url('./bg/${scene.background}')`}
 	></div>
-	{#if $scene.nextBackground}
+	{#if scene.nextBackground}
 		<div
 			class="absolute w-full h-full left-0 top-0 transition-all transition-1s"
-			style="background-image: url('./bg/{$scene.nextBackground}'); opacity: {$scene.nextBgOpacity ??
-				0}"
+			style={`background-image: url('./bg/${scene.nextBackground}'); opacity: ${scene.nextBgOpacity ?? 0}`}
 		></div>
 	{/if}
 </Swipable>
 <div
 	class="absolute w-full left-0 top-0 p-3 transition-transform transition-1s"
-	style="transform: translateY({$scene.clockPos}px)"
+	style={`transform: translateY(${scene.clockPos}px)`}
 >
 	<Clock />
 </div>
 <div
 	class="absolute w-full left-0 top-0 p-3 transition-transform transition-1s"
-	style="transform: translateY({$scene.statusPos}px)"
+	style={`transform: translateY(${scene.statusPos}px)`}
 >
 	<Status />
 </div>

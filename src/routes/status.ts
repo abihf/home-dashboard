@@ -1,4 +1,3 @@
-import type { StartStopNotifier } from "svelte/store";
 import type { StatusResponse, Usage } from "./api/status/types";
 
 export interface Status extends Omit<StatusResponse, "netUsage"> {
@@ -17,7 +16,7 @@ export const initialStatus: Status = {
   download: zero,
 };
 
-export const fetchStatus: StartStopNotifier<Status> = function fetchStatus(set) {
+export function fetchStatus(set: (status: Status) => void) {
   let lastFetchMs: bigint, lastRx: bigint, lastTx: bigint;
   const eventSource = new EventSource("/api/status");
   eventSource.addEventListener("error", (err) => console.error("status error", err));
@@ -37,7 +36,7 @@ export const fetchStatus: StartStopNotifier<Status> = function fetchStatus(set) 
     set({ ...data, upload, download });
   });
   return () => eventSource.close();
-};
+}
 
 function netSpeed(newValue: bigint, oldValue: bigint, deltaMs: bigint): Usage {
   if (deltaMs <= 0n) return zero;
