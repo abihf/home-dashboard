@@ -1,6 +1,11 @@
-export function css(style: Partial<CSSStyleDeclaration>) {
+type CssProps = {
+	[K in keyof CSSStyleProperties]?: CSSStyleProperties[K] extends string|number ? CSSStyleProperties[K] : never;
+}
+
+export function css(style: CssProps) {
 	return Object.entries(style)
-		.map(([key, val]) => `${kebabify(key)}:${val}`)
+		.map(([key, val]) => val ?? `${kebabify(key)}:${val}`)
+		.filter(Boolean)
 		.join(";");
 }
 

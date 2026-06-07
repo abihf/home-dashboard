@@ -45,7 +45,7 @@ export const GET: RequestHandler = async () => {
         }
       }
       handler = setInterval(queryAndUpdate, 1000);
-      queryAndUpdate();
+      void queryAndUpdate();
     },
     cancel() {
       canceled = true;
