@@ -1,6 +1,5 @@
 import type { RequestHandler } from "@sveltejs/kit";
 import type { NetUsage, StatusResponse, Usage } from "./types";
-import { $ } from "bun";
 
 interface CpuSample {
   idle: number;
@@ -110,7 +109,7 @@ async function readDiskUsage() {
   const result: Record<string, Usage> = {};
   try {
     let isFirstLine = true;
-    for await (const line of $`df -k --output=target,pcent,used`.lines()) {
+    for await (const line of Bun.$`df -k --output=target,pcent,used`.lines()) {
       if (isFirstLine) {
         isFirstLine = false;
         continue;
@@ -150,7 +149,7 @@ async function readCpuTemperature(): Promise<number> {
 }
 
 async function getHwmonPaths(sensor: string): Promise<string> {
-  for await (const line of $`ls -1 /sys/class/hwmon`.lines()) {
+  for await (const line of Bun.$`ls -1 /sys/class/hwmon`.lines()) {
     const dir = line.trim();
     if (!dir) continue;
 

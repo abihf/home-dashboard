@@ -17,18 +17,18 @@
     "test:unit": "vitest"
   },
   "dependencies": {
-    "@types/bun": "^1.3.12",
+    "@types/bun": "^1.3.14",
     "svelte-adapter-bun": "^1.0.1"
   },
   "devDependencies": {
-    "@sveltejs/kit": "^2.57.1",
-    "@sveltejs/vite-plugin-svelte": "^7.0.0",
-    "@tailwindcss/vite": "^4.2.2",
-    "svelte": "^5.55.3",
-    "svelte-check": "^4.4.6",
-    "systeminformation": "^5.31.5",
-    "tailwindcss": "^4.2.2",
+    "@sveltejs/kit": "^2.63.0",
+    "@sveltejs/vite-plugin-svelte": "^7.1.2",
+    "@tailwindcss/vite": "^4.3.0",
+    "svelte": "^5.56.2",
+    "svelte-check": "^4.6.0",
+    "systeminformation": "^5.31.7",
+    "tailwindcss": "^4.3.0",
     "vite": "npm:@voidzero-dev/vite-plus-core",
-    "vite-plus": "^0.1.16"
+    "vite-plus": "^0.1.24"
   }
 }
