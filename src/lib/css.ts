@@ -1,6 +1,6 @@
 type CssProps = {
-  [K in keyof CSSStyleProperties]?: CSSStyleProperties[K] extends string | number
-    ? CSSStyleProperties[K]
+  [K in keyof CSSStyleDeclaration]?: CSSStyleDeclaration[K] extends string | number
+    ? CSSStyleDeclaration[K]
     : never;
 };
 

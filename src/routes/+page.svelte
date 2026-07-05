@@ -1,7 +1,4 @@
-<svelte:options runes={true} />
-
 <script lang="ts">
-// import { createEventSource } from "$lib/eventSource";
 import Swipable from "$lib/Swipable.svelte";
 import Clock from "./Clock.svelte";
 import Status from "./Status.svelte";
@@ -46,11 +43,7 @@ $effect(() => {
 
 	return () => clearTimeout(handler);
 });
-// onMount(() =>
-// 	createEventSource("/api/reload").subscribe((msg) => {
-// 		if (msg?.time) location.reload();
-// 	}),
-// );
+
 function handleSwipe(ev: { deltaX: number }) {
 	sceneState = swipeScene(sceneState, ev.deltaX > 0 ? SwipeDir.LEFT : SwipeDir.RIGHT);
 }
