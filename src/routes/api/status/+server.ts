@@ -1,6 +1,5 @@
 import type { NetUsage, StatusResponse, Usage } from "./types";
 import type { RequestHandler } from "@sveltejs/kit";
-
 interface CpuSample {
   idle: number;
   total: number;
@@ -14,7 +13,7 @@ async function query() {
     readMemUsage(),
     readDiskUsage(),
     readCpuTemperature(),
-    readNetUsage("enp10s0"),
+    readNetUsage("eth1"),
   ]);
 
   const status: StatusResponse = {
@@ -61,10 +60,7 @@ export const GET: RequestHandler = async () => {
 };
 
 async function readCpuUsage(): Promise<number> {
-  const stat = await readText("/proc/stat");
-  if (!stat) return 0;
-
-  const current = parseCpuSample(stat);
+  const current = await parseCpuSample(readLines("/proc/stat"));
   if (!current) return 0;
 
   if (!previousCpuSample) {
@@ -80,16 +76,15 @@ async function readCpuUsage(): Promise<number> {
   return clamp((100 * (totalDelta - idleDelta)) / totalDelta);
 }
 
-async function readMemUsage(): Promise<Usage> {
-  const meminfo = await readText("/proc/meminfo");
-  if (!meminfo) return { usage: 0n, percent: 0 };
+const memInfoKeys = ["MemTotal", "MemAvailable"] as const;
+type MemInfo = Partial<Record<typeof memInfoKeys[number], bigint>>;
 
-  const stats = parseMeminfo(meminfo);
+async function readMemUsage(): Promise<Usage> {
+  const stats = await parseMeminfo(readLines("/proc/meminfo"));
   const total = (stats.MemTotal ?? 0n) * 1024n;
-  const availableKb = stats.MemAvailable ?? 0n;
   if (!total) return { usage: 0n, percent: 0 };
 
-  const available = availableKb * 1024n;
+  const available = (stats.MemAvailable ?? 0n) * 1024n;
   const usage = total > available ? total - available : 0n;
   const percent = Number((10000n * usage) / total) / 100;
 
@@ -144,8 +139,10 @@ async function readDiskUsage() {
 
 const hwmonPath = await getHwmonPaths("k10temp");
 async function readCpuTemperature(): Promise<number> {
-  const hwmon = await readTemperatureFromHwmon();
-  return hwmon ?? 0;
+    if (!hwmonPath) return 0;
+
+  const temp = await readNumberFile(hwmonPath);
+  return Number(temp) / 1000;
 }
 
 async function getHwmonPaths(sensor: string): Promise<string> {
@@ -171,8 +168,14 @@ async function readNetUsage(iface: string): Promise<NetUsage> {
   return { lastTx, lastRx };
 }
 
-function parseCpuSample(stat: string): CpuSample | undefined {
-  const cpuLine = stat.split("\n").find((line) => line.startsWith("cpu "));
+async function parseCpuSample(stat: AsyncIterable<string>){
+  let cpuLine: string | undefined;
+  for await (const line of stat) {
+    if (line.startsWith("cpu ")) {
+      cpuLine = line;
+      break;
+    }
+  }
   if (!cpuLine) return undefined;
 
   const values = cpuLine
@@ -188,36 +191,18 @@ function parseCpuSample(stat: string): CpuSample | undefined {
   return { idle, total };
 }
 
-function parseMeminfo(meminfo: string) {
-  const stats: Record<string, bigint> = {};
-  for (const line of meminfo.split("\n")) {
-    const match = line.match(/^(\w+):\s+(\d+)/);
+const memInfoRegex = new RegExp(`^(${memInfoKeys.join("|")}):\\s+(\\d+)`, "m");
+async function parseMeminfo(meminfo: AsyncIterable<string>) {
+  const stats: MemInfo = {};
+  let count = 0;
+  for await (const line of meminfo) {
+    const match = line.match(memInfoRegex);
     if (!match) continue;
-    stats[match[1]] = BigInt(match[2]);
+    stats[match[1] as keyof MemInfo] = BigInt(match[2]);
+    count++;
+    if (count >= memInfoKeys.length) break;
   }
   return stats;
-}
-
-async function readTemperatureFromHwmon(): Promise<number | null> {
-  if (!hwmonPath) return null;
-
-  const output = await readText(hwmonPath);
-  if (!output) return null;
-
-  for (const line of output.split("\n")) {
-    const normalized = normalizeTemperature(Number(line.trim()));
-    if (normalized !== null) return normalized;
-  }
-
-  return null;
-}
-
-function normalizeTemperature(raw: number): number | null {
-  if (!Number.isFinite(raw) || raw <= 0) return null;
-
-  const celsius = raw >= 1000 ? raw / 1000 : raw > 200 ? raw / 10 : raw;
-  if (celsius <= 0 || celsius > 150) return null;
-  return celsius;
 }
 
 async function readNumberFile(path: string): Promise<bigint> {
@@ -239,6 +224,23 @@ async function readText(path: string): Promise<string | null> {
     return await Bun.file(path).text();
   } catch {
     return null;
+  }
+}
+
+async function *readLines(path: string) {
+  const stream =  Bun.file(path).stream().pipeThrough(new TextDecoderStream());
+  let buffer = "";
+  for await (const chunk of stream) {
+    buffer += chunk;
+    let newlineIndex;
+    while ((newlineIndex = buffer.indexOf("\n")) >= 0) {
+      const line = buffer.slice(0, newlineIndex);
+      yield line;
+      buffer = buffer.slice(newlineIndex + 1);
+    }
+  }
+  if (buffer.length > 0) {
+    yield buffer;
   }
 }
 
