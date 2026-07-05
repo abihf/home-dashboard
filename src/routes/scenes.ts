@@ -5,7 +5,9 @@ interface SceneData {
 }
 
 export const SCENE_INTERVAL = 20_000;
-export const initialScenesData: Array<SceneData> = [{ background: "", clockPos: 0, statusPos: 500 }];
+export const initialScenesData: Array<SceneData> = [
+  { background: "", clockPos: 0, statusPos: 500 },
+];
 
 export enum SwipeDir {
   LEFT = -1,

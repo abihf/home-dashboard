@@ -19,7 +19,7 @@ export default defineConfig({
       ],
     },
     sortTailwindcss: {
-      stylesheet: "src/public/styles/base.css",
+      stylesheet: "src/app.css",
     },
   },
   lint: {

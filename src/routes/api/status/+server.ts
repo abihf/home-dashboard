@@ -1,5 +1,5 @@
-import type { RequestHandler } from "@sveltejs/kit";
 import type { NetUsage, StatusResponse, Usage } from "./types";
+import type { RequestHandler } from "@sveltejs/kit";
 
 interface CpuSample {
   idle: number;
