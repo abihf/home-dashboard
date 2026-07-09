@@ -11,7 +11,7 @@ async function query() {
   const [cpuUsage, memUsage, disk, cpuTemp, netUsage] = await Promise.all([
     readCpuUsage(),
     readMemUsage(),
-    readDiskUsage(),
+    readDiskUsage("/", "/media/data"),
     readCpuTemperature(),
     readNetUsage("eth1"),
   ]);
@@ -77,7 +77,7 @@ async function readCpuUsage(): Promise<number> {
 }
 
 const memInfoKeys = ["MemTotal", "MemAvailable"] as const;
-type MemInfo = Partial<Record<typeof memInfoKeys[number], bigint>>;
+type MemInfo = Partial<Record<(typeof memInfoKeys)[number], bigint>>;
 
 async function readMemUsage(): Promise<Usage> {
   const stats = await parseMeminfo(readLines("/proc/meminfo"));
@@ -94,14 +94,16 @@ async function readMemUsage(): Promise<Usage> {
   };
 }
 
-let diskUsageCache: Record<string, Usage> | null = null;
+type DiskUsages<Root extends string> = Partial<Record<Root, Usage>>;
+let diskUsageCache: DiskUsages<string> | null = null;
 let diskUsageUpdatedAt: Date | null = null;
 
-async function readDiskUsage() {
+async function readDiskUsage<Roots extends string>(...roots: Roots[]) {
   if (diskUsageCache && diskUsageUpdatedAt && Date.now() - diskUsageUpdatedAt.getTime() < 600000) {
-    return diskUsageCache;
+    return diskUsageCache as DiskUsages<Roots>;
   }
-  const result: Record<string, Usage> = {};
+  const rootsSet = new Set(roots);
+  const result: DiskUsages<Roots> = {};
   try {
     let isFirstLine = true;
     for await (const line of Bun.$`df -k --output=target,pcent,used`.lines()) {
@@ -110,10 +112,12 @@ async function readDiskUsage() {
         continue;
       }
 
-      const parts = line.trim().split(/\s+/);
+      const parts = line.trim().split(/\s+/, 3);
       if (parts.length < 3) continue;
 
-      const target = parts[0];
+      const target = parts[0] as Roots;
+      if (!rootsSet.has(target)) continue;
+
       const percentText = parts[1];
       const usedText = parts[2];
 
@@ -128,18 +132,21 @@ async function readDiskUsage() {
         usage: usedKb * 1024n,
         percent: clamp(percent),
       };
+
+      if (Object.keys(result).length >= rootsSet.size) break;
     }
+
+    diskUsageCache = result;
+    diskUsageUpdatedAt = new Date();
   } catch (error) {
     console.error("Error reading disk usage:", error);
   }
-  diskUsageCache = result;
-  diskUsageUpdatedAt = new Date();
   return result;
 }
 
 const hwmonPath = await getHwmonPaths("k10temp");
 async function readCpuTemperature(): Promise<number> {
-    if (!hwmonPath) return 0;
+  if (!hwmonPath) return 0;
 
   const temp = await readNumberFile(hwmonPath);
   return Number(temp) / 1000;
@@ -168,7 +175,7 @@ async function readNetUsage(iface: string): Promise<NetUsage> {
   return { lastTx, lastRx };
 }
 
-async function parseCpuSample(stat: AsyncIterable<string>){
+async function parseCpuSample(stat: AsyncIterable<string>) {
   let cpuLine: string | undefined;
   for await (const line of stat) {
     if (line.startsWith("cpu ")) {
@@ -227,8 +234,8 @@ async function readText(path: string): Promise<string | null> {
   }
 }
 
-async function *readLines(path: string) {
-  const stream =  Bun.file(path).stream().pipeThrough(new TextDecoderStream());
+async function* readLines(path: string) {
+  const stream = Bun.file(path).stream().pipeThrough(new TextDecoderStream());
   let buffer = "";
   for await (const chunk of stream) {
     buffer += chunk;
