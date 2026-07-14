@@ -37,7 +37,7 @@ export type { SceneData, SceneState };
 export const initialSceneState: SceneState = { idx: 0, stage: SceneStage.LOADING };
 
 export async function loadScenesData() {
-  const response = await fetch(`/bg/list.json?t=${Date.now()}`);
+  const response = await fetch(`/bg/list.json`);
   return (await response.json()) as Array<SceneData>;
 }
 

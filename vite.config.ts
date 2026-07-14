@@ -6,6 +6,9 @@ const ignorePatterns = ["**/node_modules/**", "**/build/**", "**/.svelte-kit/**"
 
 export default defineConfig({
   plugins: [tailwindcss(), sveltekit()],
+  build: {
+    target: "esnext",
+  },
   fmt: {
     ignorePatterns,
     sortImports: {

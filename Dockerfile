@@ -1,15 +1,13 @@
-FROM node:20-alpine AS base
+FROM oven/bun:1-alpine AS base
 
 FROM base AS builder
-# Check https://github.com/nodejs/docker-node/tree/b4117f9333da4138b03a546ec926ef50a31506c3#nodealpine to understand why libc6-compat might be needed.
-RUN apk add --no-cache libc6-compat
 WORKDIR /app
 
-COPY package.json package-lock.json ./
-RUN --mount=type=cache,target=/root/.npm npm ci
+COPY package.json bun.lock bunfig.toml ./
+RUN --mount=type=cache,target=/root/.bun bun install
 COPY . .
-RUN --mount=type=cache,target=/app/.svelte-kit npm run build
-RUN npm prune --production
+RUN --mount=type=cache,target=/app/.svelte-kit bun run build
+RUN bun prune --production
 
 FROM base AS runner
 WORKDIR /app
@@ -23,4 +21,4 @@ ENV NODE_ENV production
 ENV PORT 3000
 ENV HOSTNAME "0.0.0.0"
 EXPOSE ${PORT}
-CMD ["node", "build/index.js"]
+CMD ["bun", "build/index.js"]

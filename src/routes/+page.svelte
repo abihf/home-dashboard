@@ -52,7 +52,7 @@ function handleSwipe(ev: { deltaX: number }) {
 <Swipable class="absolute w-full h-full left-0 top-0" onswipe={handleSwipe}>
 	<div
 		class="absolute w-full h-full left-0 top-0"
-		style={`background-image: url('./bg/${scene.background}')`}
+		style={scene.background ? `background-image: url('./bg/${scene.background}')` : ""}
 	></div>
 	{#if scene.nextBackground}
 		<div
