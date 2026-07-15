@@ -20,8 +20,8 @@ async function query() {
     cpuUsage,
     cpuTemp,
     memUsage,
-    diskRoot: disk["/"] ?? { usage: 0n, percent: 0 },
-    diskMedia: disk["/media/data"] ?? { usage: 0n, percent: 0 },
+    diskRoot: disk["/"] ?? { usage: 0, percent: 0 },
+    diskMedia: disk["/media/data"] ?? { usage: 0, percent: 0 },
     netUsage,
   };
   return status;
@@ -36,11 +36,11 @@ export const GET: RequestHandler = async () => {
       async function queryAndUpdate() {
         try {
           const data = await query();
-          const json = serializeWithBigInt(data);
+          const json = JSON.stringify(data);
           if (!canceled) controller.enqueue(`data: ${json}\n\n`);
         } catch (error) {
           console.error("Error querying metrics:", error);
-          if (!canceled) controller.enqueue("event: error\\ndata: metrics read failed\\n\\n");
+          if (!canceled) controller.enqueue("event: error\ndata: metrics read failed\n\n");
         }
       }
       handler = setInterval(queryAndUpdate, 1000);
@@ -77,16 +77,16 @@ async function readCpuUsage(): Promise<number> {
 }
 
 const memInfoKeys = ["MemTotal", "MemAvailable"] as const;
-type MemInfo = Partial<Record<(typeof memInfoKeys)[number], bigint>>;
+type MemInfo = Partial<Record<(typeof memInfoKeys)[number], number>>;
 
 async function readMemUsage(): Promise<Usage> {
   const stats = await parseMeminfo(readLines("/proc/meminfo"));
-  const total = (stats.MemTotal ?? 0n) * 1024n;
-  if (!total) return { usage: 0n, percent: 0 };
+  const total = (stats.MemTotal ?? 0) * 1024;
+  if (!total) return { usage: 0, percent: 0 };
 
-  const available = (stats.MemAvailable ?? 0n) * 1024n;
-  const usage = total > available ? total - available : 0n;
-  const percent = Number((10000n * usage) / total) / 100;
+  const available = (stats.MemAvailable ?? 0) * 1024;
+  const usage = total > available ? total - available : 0;
+  const percent = Number((10000 * usage) / total) / 100;
 
   return {
     usage,
@@ -126,10 +126,10 @@ async function readDiskUsage<Roots extends string>(...roots: Roots[]) {
 
       const percent = Number(percentText.slice(0, -1));
       if (!Number.isFinite(percent)) continue;
-      const usedKb = BigInt(usedText);
+      const usedKb = Number(usedText);
 
       result[target] = {
-        usage: usedKb * 1024n,
+        usage: usedKb * 1024,
         percent: clamp(percent),
       };
 
@@ -205,24 +205,24 @@ async function parseMeminfo(meminfo: AsyncIterable<string>) {
   for await (const line of meminfo) {
     const match = line.match(memInfoRegex);
     if (!match) continue;
-    stats[match[1] as keyof MemInfo] = BigInt(match[2]);
+    stats[match[1] as keyof MemInfo] = Number(match[2]);
     count++;
     if (count >= memInfoKeys.length) break;
   }
   return stats;
 }
 
-async function readNumberFile(path: string): Promise<bigint> {
+async function readNumberFile(path: string): Promise<number> {
   const text = await readText(path);
-  if (!text) return 0n;
+  if (!text) return 0;
 
   const trimmed = text.trim();
-  if (!/^\d+$/.test(trimmed)) return 0n;
+  if (!/^\d+$/.test(trimmed)) return 0;
 
   try {
-    return BigInt(trimmed);
+    return Number(trimmed);
   } catch {
-    return 0n;
+    return 0;
   }
 }
 
@@ -256,8 +256,4 @@ function clamp(value: number): number {
   if (value < 0) return 0;
   if (value > 100) return 100;
   return value;
-}
-
-function serializeWithBigInt(value: unknown): string {
-  return JSON.stringify(value, (_, inner) => (typeof inner === "bigint" ? `${inner}n` : inner));
 }

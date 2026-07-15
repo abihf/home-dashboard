@@ -1,11 +1,11 @@
 export interface Usage {
-  usage: bigint;
+  usage: number;
   percent: number;
 }
 
 export interface NetUsage {
-  lastTx: bigint;
-  lastRx: bigint;
+  lastTx: number;
+  lastRx: number;
 }
 
 export interface StatusResponse {

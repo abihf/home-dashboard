@@ -36,7 +36,7 @@ $effect(() => {
 	const delay = sceneDelay(sceneState.stage);
 	if (delay === undefined) return;
 
-	const snapshot = { idx: sceneState.idx, stage: sceneState.stage, dir: sceneState.dir };
+	const snapshot = { ...sceneState };
 	const handler = setTimeout(() => {
 		sceneState = nextSceneState(snapshot, scenesData);
 	}, delay);

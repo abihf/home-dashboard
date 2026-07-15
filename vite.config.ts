@@ -7,7 +7,9 @@ const ignorePatterns = ["**/node_modules/**", "**/build/**", "**/.svelte-kit/**"
 export default defineConfig({
   plugins: [tailwindcss(), sveltekit()],
   build: {
-    target: "esnext",
+    // Latest WebKit (Safari 18+) supports virtually all ES2024 + ESNext features.
+    target: ["safari18", "esnext"],
+    cssMinify: "lightningcss",
   },
   fmt: {
     ignorePatterns,
