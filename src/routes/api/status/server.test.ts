@@ -60,14 +60,6 @@ function stubBunFile(files: Record<string, MockBunFile>) {
   });
 }
 
-async function collectLines(lines: AsyncIterable<string>): Promise<Array<string>> {
-  const result: Array<string> = [];
-  for await (const line of lines) {
-    result.push(line);
-  }
-  return result;
-}
-
 function createMockReader(overrides: Partial<MetricsReader> = {}): MetricsReader {
   return {
     readCpuUsage: vi.fn().mockResolvedValue(12),
@@ -265,14 +257,14 @@ describe("readLines", () => {
     const { readLines } = await loadModule();
     stubBunFile({ "/tmp/lines": createMockBunFile({ text: "a\nb\nc" }) });
 
-    await expect(collectLines(readLines("/tmp/lines"))).resolves.toEqual(["a", "b", "c"]);
+    await expect(Array.fromAsync(readLines("/tmp/lines"))).resolves.toEqual(["a", "b", "c"]);
   });
 
   it("yields the remaining content when there is no trailing newline", async () => {
     const { readLines } = await loadModule();
     stubBunFile({ "/tmp/lines": createMockBunFile({ text: "a\nb" }) });
 
-    await expect(collectLines(readLines("/tmp/lines"))).resolves.toEqual(["a", "b"]);
+    await expect(Array.fromAsync(readLines("/tmp/lines"))).resolves.toEqual(["a", "b"]);
   });
 
   it("handles chunks split mid-line", async () => {
@@ -281,14 +273,14 @@ describe("readLines", () => {
       "/tmp/lines": createMockBunFile({ chunks: ["a\nb", "c\nd", "\n"] }),
     });
 
-    await expect(collectLines(readLines("/tmp/lines"))).resolves.toEqual(["a", "bc", "d"]);
+    await expect(Array.fromAsync(readLines("/tmp/lines"))).resolves.toEqual(["a", "bc", "d"]);
   });
 
   it("yields nothing for an empty stream", async () => {
     const { readLines } = await loadModule();
     stubBunFile({ "/tmp/lines": createMockBunFile({ text: "" }) });
 
-    await expect(collectLines(readLines("/tmp/lines"))).resolves.toEqual([]);
+    await expect(Array.fromAsync(readLines("/tmp/lines"))).resolves.toEqual([]);
   });
 });
 

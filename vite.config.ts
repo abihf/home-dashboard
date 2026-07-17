@@ -38,7 +38,7 @@ export default defineConfig({
     coverage: {
       provider: "istanbul",
       reporter: ["text", "lcovonly"],
-      include: ["src/**/*.ts"],
+      include: ["src/**/*.{ts,svelte}"],
     },
   },
 });
