@@ -1,19 +1,27 @@
 import type { NetUsage, StatusResponse, Usage } from "./types";
 import type { RequestHandler } from "@sveltejs/kit";
-interface CpuSample {
-  idle: number;
-  total: number;
+
+export const GET: RequestHandler = async () => {
+  return createStatusStream(createMetricsReader());
+};
+
+export type DiskUsages<Roots extends string> = Partial<Record<Roots, Usage>>;
+
+export interface MetricsReader {
+  readCpuUsage(): Promise<number>;
+  readMemUsage(): Promise<Usage>;
+  readDiskUsage<Roots extends string>(...roots: Roots[]): Promise<DiskUsages<Roots>>;
+  readCpuTemperature(): Promise<number>;
+  readNetUsage(iface: string): Promise<NetUsage>;
 }
 
-let previousCpuSample: CpuSample | undefined;
-
-async function query() {
+export async function query(reader: MetricsReader): Promise<StatusResponse> {
   const [cpuUsage, memUsage, disk, cpuTemp, netUsage] = await Promise.all([
-    readCpuUsage(),
-    readMemUsage(),
-    readDiskUsage("/", "/media/data"),
-    readCpuTemperature(),
-    readNetUsage("eth1"),
+    reader.readCpuUsage(),
+    reader.readMemUsage(),
+    reader.readDiskUsage("/", "/media/data"),
+    reader.readCpuTemperature(),
+    reader.readNetUsage("eth1"),
   ]);
 
   const status: StatusResponse = {
@@ -27,7 +35,7 @@ async function query() {
   return status;
 }
 
-export const GET: RequestHandler = async () => {
+export function createStatusStream(reader: MetricsReader): Response {
   let handler: ReturnType<typeof setInterval>;
   let canceled = false;
 
@@ -35,7 +43,7 @@ export const GET: RequestHandler = async () => {
     start(controller) {
       async function queryAndUpdate() {
         try {
-          const data = await query();
+          const data = await query(reader);
           const json = JSON.stringify(data);
           if (!canceled) controller.enqueue(`data: ${json}\n\n`);
         } catch (error) {
@@ -57,102 +65,95 @@ export const GET: RequestHandler = async () => {
       "content-type": "text/event-stream",
     },
   });
-};
-
-async function readCpuUsage(): Promise<number> {
-  const current = await parseCpuSample(readLines("/proc/stat"));
-  if (!current) return 0;
-
-  if (!previousCpuSample) {
-    previousCpuSample = current;
-    return 0;
-  }
-
-  const totalDelta = current.total - previousCpuSample.total;
-  const idleDelta = current.idle - previousCpuSample.idle;
-  previousCpuSample = current;
-
-  if (totalDelta <= 0) return 0;
-  return clamp((100 * (totalDelta - idleDelta)) / totalDelta);
 }
 
-const memInfoKeys = ["MemTotal", "MemAvailable"] as const;
-type MemInfo = Partial<Record<(typeof memInfoKeys)[number], number>>;
+interface CpuSample {
+  idle: number;
+  total: number;
+}
 
-async function readMemUsage(): Promise<Usage> {
-  const stats = await parseMeminfo(readLines("/proc/meminfo"));
-  const total = (stats.MemTotal ?? 0) * 1024;
-  if (!total) return { usage: 0, percent: 0 };
-
-  const available = (stats.MemAvailable ?? 0) * 1024;
-  const usage = total > available ? total - available : 0;
-  const percent = Number((10000 * usage) / total) / 100;
+function createMetricsReader(): MetricsReader {
+  let previousCpuSample: CpuSample | undefined;
+  let diskUsageCache: DiskUsages<string> | null = {};
+  let diskUsageUpdatedAt: Date | null = null;
+  let hwmonPathPromise: Promise<string | null> | null = null;
 
   return {
-    usage,
-    percent: clamp(percent),
+    async readCpuUsage() {
+      const current = await parseCpuSample(readLines("/proc/stat"));
+      if (!current) return 0;
+
+      if (!previousCpuSample) {
+        previousCpuSample = current;
+        return 0;
+      }
+
+      const totalDelta = current.total - previousCpuSample.total;
+      const idleDelta = current.idle - previousCpuSample.idle;
+      previousCpuSample = current;
+
+      if (totalDelta <= 0) return 0;
+      return clamp((100 * (totalDelta - idleDelta)) / totalDelta);
+    },
+
+    async readMemUsage() {
+      const stats = await parseMeminfo(readLines("/proc/meminfo"));
+      const total = (stats.MemTotal ?? 0) * 1024;
+      if (!total) return { usage: 0, percent: 0 };
+
+      const available = (stats.MemAvailable ?? 0) * 1024;
+      const usage = total > available ? total - available : 0;
+      const percent = Number((10000 * usage) / total) / 100;
+
+      return {
+        usage,
+        percent: clamp(percent),
+      };
+    },
+
+    async readDiskUsage<Roots extends string>(...roots: Roots[]) {
+      if (
+        diskUsageCache &&
+        diskUsageUpdatedAt &&
+        Date.now() - diskUsageUpdatedAt.getTime() < 600000
+      ) {
+        return diskUsageCache as DiskUsages<Roots>;
+      }
+      try {
+        const result = await parseDiskUsage(Bun.$`df -k --output=target,pcent,used`.lines(), roots);
+
+        diskUsageCache = result;
+        diskUsageUpdatedAt = new Date();
+        return result;
+      } catch (error) {
+        console.error("Error reading disk usage:", error);
+      }
+      return diskUsageCache as DiskUsages<Roots>;
+    },
+
+    async readCpuTemperature() {
+      if (!hwmonPathPromise) {
+        hwmonPathPromise = findHwmonTempInput("k10temp");
+      }
+      const hwmonPath = await hwmonPathPromise;
+      if (!hwmonPath) return 0;
+
+      const temp = await readNumberFile(hwmonPath);
+      return Number(temp) / 1000;
+    },
+
+    async readNetUsage(iface: string): Promise<NetUsage> {
+      const [lastRx, lastTx] = await Promise.all([
+        readNumberFile(`/sys/class/net/${iface}/statistics/rx_bytes`),
+        readNumberFile(`/sys/class/net/${iface}/statistics/tx_bytes`),
+      ]);
+
+      return { lastTx, lastRx };
+    },
   };
 }
 
-type DiskUsages<Root extends string> = Partial<Record<Root, Usage>>;
-let diskUsageCache: DiskUsages<string> | null = null;
-let diskUsageUpdatedAt: Date | null = null;
-
-async function readDiskUsage<Roots extends string>(...roots: Roots[]) {
-  if (diskUsageCache && diskUsageUpdatedAt && Date.now() - diskUsageUpdatedAt.getTime() < 600000) {
-    return diskUsageCache as DiskUsages<Roots>;
-  }
-  const rootsSet = new Set(roots);
-  const result: DiskUsages<Roots> = {};
-  try {
-    let isFirstLine = true;
-    for await (const line of Bun.$`df -k --output=target,pcent,used`.lines()) {
-      if (isFirstLine) {
-        isFirstLine = false;
-        continue;
-      }
-
-      const parts = line.trim().split(/\s+/, 3);
-      if (parts.length < 3) continue;
-
-      const target = parts[0] as Roots;
-      if (!rootsSet.has(target)) continue;
-
-      const percentText = parts[1];
-      const usedText = parts[2];
-
-      if (!percentText.endsWith("%")) continue;
-      if (!/^\d+$/.test(usedText)) continue;
-
-      const percent = Number(percentText.slice(0, -1));
-      if (!Number.isFinite(percent)) continue;
-      const usedKb = Number(usedText);
-
-      result[target] = {
-        usage: usedKb * 1024,
-        percent: clamp(percent),
-      };
-
-      if (Object.keys(result).length >= rootsSet.size) break;
-    }
-
-    diskUsageCache = result;
-    diskUsageUpdatedAt = new Date();
-  } catch (error) {
-    console.error("Error reading disk usage:", error);
-  }
-  return result;
-}
-
-const hwmonPath = await getHwmonPaths("k10temp");
-async function readCpuTemperature(): Promise<number> {
-  if (!hwmonPath) return 0;
-
-  const temp = await readNumberFile(hwmonPath);
-  return Number(temp) / 1000;
-}
-
-async function getHwmonPaths(sensor: string): Promise<string> {
+async function findHwmonTempInput(sensor: string): Promise<string | null> {
   for await (const line of Bun.$`ls -1 /sys/class/hwmon`.lines()) {
     const dir = line.trim();
     if (!dir) continue;
@@ -163,19 +164,10 @@ async function getHwmonPaths(sensor: string): Promise<string> {
       return nameFileName.replace(/\/name$/, "/temp1_input");
     }
   }
-  return "";
+  return null;
 }
 
-async function readNetUsage(iface: string): Promise<NetUsage> {
-  const [lastRx, lastTx] = await Promise.all([
-    readNumberFile(`/sys/class/net/${iface}/statistics/rx_bytes`),
-    readNumberFile(`/sys/class/net/${iface}/statistics/tx_bytes`),
-  ]);
-
-  return { lastTx, lastRx };
-}
-
-async function parseCpuSample(stat: AsyncIterable<string>) {
+export async function parseCpuSample(stat: AsyncIterable<string>) {
   let cpuLine: string | undefined;
   for await (const line of stat) {
     if (line.startsWith("cpu ")) {
@@ -198,8 +190,12 @@ async function parseCpuSample(stat: AsyncIterable<string>) {
   return { idle, total };
 }
 
+const memInfoKeys = ["MemTotal", "MemAvailable"] as const;
+type MemInfo = Partial<Record<(typeof memInfoKeys)[number], number>>;
+
 const memInfoRegex = new RegExp(`^(${memInfoKeys.join("|")}):\\s+(\\d+)`, "m");
-async function parseMeminfo(meminfo: AsyncIterable<string>) {
+
+export async function parseMeminfo(meminfo: AsyncIterable<string>) {
   const stats: MemInfo = {};
   let count = 0;
   for await (const line of meminfo) {
@@ -212,7 +208,46 @@ async function parseMeminfo(meminfo: AsyncIterable<string>) {
   return stats;
 }
 
-async function readNumberFile(path: string): Promise<number> {
+export async function parseDiskUsage<Roots extends string>(
+  dfOutput: AsyncIterable<string>,
+  roots: Roots[],
+) {
+  const usage: DiskUsages<Roots> = {};
+  const rootsSet = new Set(roots);
+  let isFirstLine = true;
+  for await (const line of dfOutput) {
+    if (isFirstLine) {
+      isFirstLine = false;
+      continue;
+    }
+
+    const parts = line.trim().split(/\s+/, 3);
+    if (parts.length < 3) continue;
+
+    const target = parts[0] as Roots;
+    if (!rootsSet.has(target)) continue;
+
+    const percentText = parts[1];
+    const usedText = parts[2];
+
+    if (!percentText.endsWith("%")) continue;
+    if (!/^\d+$/.test(usedText)) continue;
+
+    const percent = Number(percentText.slice(0, -1));
+    if (!Number.isFinite(percent)) continue;
+    const usedKb = Number(usedText);
+
+    usage[target] = {
+      usage: usedKb * 1024,
+      percent: clamp(percent),
+    };
+
+    if (Object.keys(usage).length >= rootsSet.size) break;
+  }
+  return usage;
+}
+
+export async function readNumberFile(path: string): Promise<number> {
   const text = await readText(path);
   if (!text) return 0;
 
@@ -226,7 +261,7 @@ async function readNumberFile(path: string): Promise<number> {
   }
 }
 
-async function readText(path: string): Promise<string | null> {
+export async function readText(path: string): Promise<string | null> {
   try {
     return await Bun.file(path).text();
   } catch {
@@ -234,7 +269,7 @@ async function readText(path: string): Promise<string | null> {
   }
 }
 
-async function* readLines(path: string) {
+export async function* readLines(path: string) {
   const stream = Bun.file(path).stream().pipeThrough(new TextDecoderStream());
   let buffer = "";
   for await (const chunk of stream) {
