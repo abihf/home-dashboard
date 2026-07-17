@@ -6,7 +6,7 @@ type CssProps = {
 
 export function css(style: CssProps) {
   return Object.entries(style)
-    .map(([key, val]) => (val ? `${kebabify(key)}:${val}` : undefined))
+    .map(([key, val]) => (val !== undefined ? `${kebabify(key)}:${val}` : undefined))
     .filter(Boolean)
     .join(";");
 }

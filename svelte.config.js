@@ -6,7 +6,7 @@ const config = {
     runes: true,
   },
   kit: {
-    adapter: adapter(),
+    adapter: adapter({ precompress: false }),
   },
 };
 

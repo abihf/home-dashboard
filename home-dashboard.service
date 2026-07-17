@@ -5,7 +5,7 @@ Before=graphical.target
 
 [Service]
 WorkingDirectory=/home/abi/play/js/home-dashboard
-ExecStart=/home/abi/.volta/bin/npm start
+ExecStart=/usr/bin/bun ./build/index.js
 Restart=always
 RestartSec=10
 StandardOutput=syslog

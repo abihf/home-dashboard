@@ -34,4 +34,10 @@ export default defineConfig({
       typeCheck: true,
     },
   },
+  test: {
+    coverage: {
+      provider: "istanbul",
+      reporter: ["text", "lcovonly"],
+    }
+  }
 });
