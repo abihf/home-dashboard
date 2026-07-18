@@ -1,9 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import type { MetricsReader } from "./+server";
+import type { MetricsReader } from "./status";
 
 async function loadModule() {
-  return await import("./+server");
+  return await import("./status");
 }
 
 function sseReader(response: Response) {

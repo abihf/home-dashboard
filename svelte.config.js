@@ -1,4 +1,4 @@
-import adapter from "svelte-adapter-bun";
+import adapter from "@eslym/sveltekit-adapter-bun";
 
 /** @type {import('@sveltejs/kit').Config} */
 const config = {
@@ -6,7 +6,7 @@ const config = {
     runes: true,
   },
   kit: {
-    adapter: adapter({ precompress: false }),
+    adapter: adapter({ precompress: false, bundler: "bun", bunBuildMinify: true }),
   },
 };
 
