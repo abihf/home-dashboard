@@ -2,7 +2,7 @@ import { createMetricsReader, createSystemMonitor } from "./status";
 
 import type { RequestHandler } from "@sveltejs/kit";
 
-export const monitor = createSystemMonitor(createMetricsReader());
+const monitor = createSystemMonitor(createMetricsReader());
 
 export const GET: RequestHandler = async () => {
   const stream = monitor.stream();
