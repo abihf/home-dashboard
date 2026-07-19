@@ -1,6 +1,14 @@
+import { createMetricsReader, createSystemMonitor } from "./status";
+
 import type { RequestHandler } from "@sveltejs/kit";
-import { createStatusStream, createMetricsReader } from "./status";
+
+export const monitor = createSystemMonitor(createMetricsReader());
 
 export const GET: RequestHandler = async () => {
-  return createStatusStream(createMetricsReader());
+  const stream = monitor.stream();
+  return new Response(stream, {
+    headers: {
+      "content-type": "text/event-stream",
+    },
+  });
 };

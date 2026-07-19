@@ -1,5 +1,5 @@
-import { describe, expect, it } from "vitest";
 import { render } from "svelte/server";
+import { describe, expect, it } from "vitest";
 import Status from "./Status.svelte";
 
 describe("Status", () => {

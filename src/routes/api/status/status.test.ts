@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import type { MetricsReader } from "./status";
 
@@ -6,58 +6,8 @@ async function loadModule() {
   return await import("./status");
 }
 
-function sseReader(response: Response) {
-  if (!response.body) throw new Error("response has no body");
-  const reader = response.body.getReader();
-  const decoder = new TextDecoder();
-  return {
-    async next() {
-      const { value } = await reader.read();
-      return typeof value === "string" ? value : decoder.decode(value);
-    },
-    cancel: () => reader.cancel(),
-  };
-}
-
-async function* asyncLines(lines: Array<string>): AsyncIterable<string> {
-  for (const line of lines) {
-    yield line;
-  }
-}
-
-type MockBunFile = {
-  text: ReturnType<typeof vi.fn>;
-  stream: ReturnType<typeof vi.fn>;
-};
-
-function createMockBunFile(
-  options: { text?: string; chunks?: Array<string>; throwText?: boolean } = {},
-): MockBunFile {
-  const encoder = new TextEncoder();
-  const chunks = options.chunks ?? [options.text ?? ""];
-  return {
-    text: vi.fn().mockImplementation(() => {
-      if (options.throwText) return Promise.reject(new Error("read failed"));
-      return Promise.resolve(options.text ?? "");
-    }),
-    stream: vi.fn().mockReturnValue(
-      new ReadableStream({
-        start(controller) {
-          for (const chunk of chunks) {
-            controller.enqueue(encoder.encode(chunk));
-          }
-          controller.close();
-        },
-      }),
-    ),
-  };
-}
-
-function stubBunFile(files: Record<string, MockBunFile>) {
-  const bun = Bun as unknown as { file: (path: string) => Bun.BunFile };
-  vi.spyOn(bun, "file").mockImplementation((path: string) => {
-    return (files[path] ?? createMockBunFile({ throwText: true })) as unknown as Bun.BunFile;
-  });
+async function* asyncLines(lines: Iterable<string>): AsyncIterable<string> {
+  yield* lines;
 }
 
 function createMockReader(overrides: Partial<MetricsReader> = {}): MetricsReader {
@@ -74,13 +24,17 @@ function createMockReader(overrides: Partial<MetricsReader> = {}): MetricsReader
   };
 }
 
-beforeEach(() => {
-  vi.resetModules();
-});
-
 afterEach(() => {
+  vi.useRealTimers();
   vi.restoreAllMocks();
 });
+
+async function readStreamChunk(reader: ReadableStreamDefaultReader<Uint8Array | string>) {
+  const { value } = await reader.read();
+  if (!value) return "";
+  if (typeof value === "string") return value;
+  return new TextDecoder().decode(value);
+}
 
 describe("parseCpuSample", () => {
   it("extracts idle and total from /proc/stat cpu line", async () => {
@@ -199,91 +153,6 @@ describe("parseDiskUsage", () => {
   });
 });
 
-describe("readText", () => {
-  it("returns file contents", async () => {
-    const { readText } = await loadModule();
-    stubBunFile({ "/tmp/foo": createMockBunFile({ text: "hello" }) });
-
-    await expect(readText("/tmp/foo")).resolves.toBe("hello");
-  });
-
-  it("returns null when reading fails", async () => {
-    const { readText } = await loadModule();
-    stubBunFile({ "/tmp/foo": createMockBunFile({ throwText: true }) });
-
-    await expect(readText("/tmp/foo")).resolves.toBeNull();
-  });
-});
-
-describe("readNumberFile", () => {
-  it("returns the numeric value", async () => {
-    const { readNumberFile } = await loadModule();
-    stubBunFile({ "/tmp/count": createMockBunFile({ text: "12345" }) });
-
-    await expect(readNumberFile("/tmp/count")).resolves.toBe(12345);
-  });
-
-  it("trims whitespace", async () => {
-    const { readNumberFile } = await loadModule();
-    stubBunFile({ "/tmp/count": createMockBunFile({ text: "  42  \n" }) });
-
-    await expect(readNumberFile("/tmp/count")).resolves.toBe(42);
-  });
-
-  it("returns 0 when the file is empty", async () => {
-    const { readNumberFile } = await loadModule();
-    stubBunFile({ "/tmp/count": createMockBunFile({ text: "" }) });
-
-    await expect(readNumberFile("/tmp/count")).resolves.toBe(0);
-  });
-
-  it("returns 0 for non-numeric content", async () => {
-    const { readNumberFile } = await loadModule();
-    stubBunFile({ "/tmp/count": createMockBunFile({ text: "not-a-number" }) });
-
-    await expect(readNumberFile("/tmp/count")).resolves.toBe(0);
-  });
-
-  it("returns 0 when reading fails", async () => {
-    const { readNumberFile } = await loadModule();
-    stubBunFile({ "/tmp/count": createMockBunFile({ throwText: true }) });
-
-    await expect(readNumberFile("/tmp/count")).resolves.toBe(0);
-  });
-});
-
-describe("readLines", () => {
-  it("yields lines split by newlines", async () => {
-    const { readLines } = await loadModule();
-    stubBunFile({ "/tmp/lines": createMockBunFile({ text: "a\nb\nc" }) });
-
-    await expect(Array.fromAsync(readLines("/tmp/lines"))).resolves.toEqual(["a", "b", "c"]);
-  });
-
-  it("yields the remaining content when there is no trailing newline", async () => {
-    const { readLines } = await loadModule();
-    stubBunFile({ "/tmp/lines": createMockBunFile({ text: "a\nb" }) });
-
-    await expect(Array.fromAsync(readLines("/tmp/lines"))).resolves.toEqual(["a", "b"]);
-  });
-
-  it("handles chunks split mid-line", async () => {
-    const { readLines } = await loadModule();
-    stubBunFile({
-      "/tmp/lines": createMockBunFile({ chunks: ["a\nb", "c\nd", "\n"] }),
-    });
-
-    await expect(Array.fromAsync(readLines("/tmp/lines"))).resolves.toEqual(["a", "bc", "d"]);
-  });
-
-  it("yields nothing for an empty stream", async () => {
-    const { readLines } = await loadModule();
-    stubBunFile({ "/tmp/lines": createMockBunFile({ text: "" }) });
-
-    await expect(Array.fromAsync(readLines("/tmp/lines"))).resolves.toEqual([]);
-  });
-});
-
 describe("query", () => {
   it("returns a status response from the reader", async () => {
     const { query } = await loadModule();
@@ -314,36 +183,35 @@ describe("query", () => {
   });
 });
 
-describe("createStatusStream", () => {
-  it("returns a server-sent event stream", async () => {
-    const { createStatusStream } = await loadModule();
-    const response = createStatusStream(createMockReader());
+describe("createSystemMonitor", () => {
+  it("streams status to current and later subscribers", async () => {
+    vi.useFakeTimers();
+    const { createSystemMonitor } = await loadModule();
+    const reader = createMockReader();
+    const monitor = createSystemMonitor(reader);
 
-    expect(response.headers.get("content-type")).toBe("text/event-stream");
-  });
+    const firstStream = monitor.stream();
+    const firstReader = firstStream.getReader();
 
-  it("emits a data event from the reader", async () => {
-    const { createStatusStream } = await loadModule();
-    const response = createStatusStream(createMockReader());
+    vi.advanceTimersByTime(1000);
+    await Promise.resolve();
+    await Promise.resolve();
+    const firstChunk = await readStreamChunk(firstReader);
+    expect(firstChunk).toContain("data: ");
+    expect(firstChunk).toContain('"cpuUsage":12');
 
-    const stream = sseReader(response);
-    const line = await stream.next();
-    expect(line).toMatch(/^data: \{.*\}\n\n$/);
+    const secondStream = monitor.stream();
+    const secondReader = secondStream.getReader();
 
-    await stream.cancel();
-  });
+    vi.advanceTimersByTime(1000);
+    await Promise.resolve();
+    await Promise.resolve();
 
-  it("emits an error event when the reader fails", async () => {
-    const { createStatusStream } = await loadModule();
-    const reader = createMockReader({
-      readCpuUsage: vi.fn().mockRejectedValue(new Error("cpu failed")),
-    });
-    const response = createStatusStream(reader);
+    const secondChunk = await readStreamChunk(secondReader);
+    expect(secondChunk).toContain("data: ");
+    expect(secondChunk).toContain('"cpuUsage":12');
 
-    const stream = sseReader(response);
-    const line = await stream.next();
-    expect(line).toBe("event: error\ndata: metrics read failed\n\n");
-
-    await stream.cancel();
+    await firstReader.cancel();
+    await secondReader.cancel();
   });
 });

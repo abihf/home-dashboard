@@ -1,5 +1,5 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { render } from "svelte/server";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import Clock from "./Clock.svelte";
 
 describe("Clock", () => {

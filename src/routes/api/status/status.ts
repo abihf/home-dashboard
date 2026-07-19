@@ -1,4 +1,73 @@
+import { readLines, readNumberFile, readText } from "$lib/file";
+
 import type { NetUsage, StatusResponse, Usage } from "./types";
+
+export type SystemMonitor = ReturnType<typeof createSystemMonitor>;
+
+export function createSystemMonitor(reader: MetricsReader) {
+  type MonitorSubscriber = (res: string) => void;
+  const subscribers = new Set<MonitorSubscriber>();
+  let intervalHandler: ReturnType<typeof setInterval> | null = null;
+
+  async function queryAndPublish() {
+    let res: string;
+    try {
+      const status = await query(reader);
+      res = `data: ${JSON.stringify(status)}\n\n`;
+    } catch (error: any) {
+      res = `event: error\ndata: ${error.message ?? String(error)}\n\n`;
+    }
+    for (const subscriber of subscribers) {
+      subscriber(res);
+    }
+  }
+
+  function start() {
+    if (intervalHandler) return;
+    void queryAndPublish();
+
+    intervalHandler = setInterval(() => {
+      void queryAndPublish();
+    }, 1000);
+  }
+
+  function stop() {
+    if (subscribers.size > 0) return;
+    if (intervalHandler) {
+      clearInterval(intervalHandler);
+      intervalHandler = null;
+    }
+  }
+
+  function stream() {
+    let callback: MonitorSubscriber | undefined = undefined;
+    let canceled = false;
+    const stream = new ReadableStream<string>({
+      start(controller) {
+        callback = (res) => {
+          if (!canceled) {
+            controller.enqueue(res);
+          }
+        };
+        subscribers.add(callback);
+        start();
+      },
+      cancel() {
+        canceled = true;
+        if (callback) {
+          subscribers.delete(callback);
+        }
+        stop();
+      },
+    });
+
+    return stream;
+  }
+
+  return {
+    stream,
+  };
+}
 
 export type DiskUsages<Roots extends string> = Partial<Record<Roots, Usage>>;
 
@@ -9,6 +78,8 @@ export interface MetricsReader {
   readCpuTemperature(): Promise<number>;
   readNetUsage(iface: string): Promise<NetUsage>;
 }
+
+const zeroUsage: Usage = { usage: 0, percent: 0 };
 
 export async function query(reader: MetricsReader): Promise<StatusResponse> {
   const [cpuUsage, memUsage, disk, cpuTemp, netUsage] = await Promise.all([
@@ -23,43 +94,11 @@ export async function query(reader: MetricsReader): Promise<StatusResponse> {
     cpuUsage,
     cpuTemp,
     memUsage,
-    diskRoot: disk["/"] ?? { usage: 0, percent: 0 },
-    diskMedia: disk["/media/data"] ?? { usage: 0, percent: 0 },
+    diskRoot: disk["/"] ?? zeroUsage,
+    diskMedia: disk["/media/data"] ?? zeroUsage,
     netUsage,
   };
   return status;
-}
-
-export function createStatusStream(reader: MetricsReader): Response {
-  let handler: ReturnType<typeof setInterval>;
-  let canceled = false;
-
-  const stream = new ReadableStream({
-    start(controller) {
-      async function queryAndUpdate() {
-        try {
-          const data = await query(reader);
-          const json = JSON.stringify(data);
-          if (!canceled) controller.enqueue(`data: ${json}\n\n`);
-        } catch (error) {
-          console.error("Error querying metrics:", error);
-          if (!canceled) controller.enqueue("event: error\ndata: metrics read failed\n\n");
-        }
-      }
-      handler = setInterval(queryAndUpdate, 1000);
-      void queryAndUpdate();
-    },
-    cancel() {
-      canceled = true;
-      clearInterval(handler);
-    },
-  });
-
-  return new Response(stream, {
-    headers: {
-      "content-type": "text/event-stream",
-    },
-  });
 }
 
 interface CpuSample {
@@ -148,15 +187,19 @@ export function createMetricsReader(): MetricsReader {
   };
 }
 
-async function findHwmonTempInput(sensor: string): Promise<string | null> {
-  for await (const line of Bun.$`ls -1 /sys/class/hwmon`.lines()) {
+async function findHwmonTempInput(
+  sensor: string,
+  inputName = "temp1_input",
+): Promise<string | null> {
+  const hwmonDir = "/sys/class/hwmon";
+  for await (const line of Bun.$`ls -1 ${hwmonDir}/`.lines()) {
     const dir = line.trim();
     if (!dir) continue;
 
-    const nameFileName = `/sys/class/hwmon/${dir}/name`;
+    const nameFileName = `${hwmonDir}/${dir}/name`;
     const name = await readText(nameFileName);
     if (name?.trim() === sensor) {
-      return nameFileName.replace(/\/name$/, "/temp1_input");
+      return `${hwmonDir}/${dir}/${inputName}`;
     }
   }
   return null;
@@ -182,7 +225,7 @@ export async function parseCpuSample(stat: AsyncIterable<string>) {
 
   const idle = values[3] + (values[4] ?? 0);
   const total = values.reduce((sum, value) => sum + value, 0);
-  return { idle, total };
+  return { idle, total } as CpuSample;
 }
 
 const memInfoKeys = ["MemTotal", "MemAvailable"] as const;
@@ -240,45 +283,6 @@ export async function parseDiskUsage<Roots extends string>(
     if (Object.keys(usage).length >= rootsSet.size) break;
   }
   return usage;
-}
-
-export async function readNumberFile(path: string): Promise<number> {
-  const text = await readText(path);
-  if (!text) return 0;
-
-  const trimmed = text.trim();
-  if (!/^\d+$/.test(trimmed)) return 0;
-
-  try {
-    return Number(trimmed);
-  } catch {
-    return 0;
-  }
-}
-
-export async function readText(path: string): Promise<string | null> {
-  try {
-    return await Bun.file(path).text();
-  } catch {
-    return null;
-  }
-}
-
-export async function* readLines(path: string) {
-  const stream = Bun.file(path).stream().pipeThrough(new TextDecoderStream());
-  let buffer = "";
-  for await (const chunk of stream) {
-    buffer += chunk;
-    let newlineIndex;
-    while ((newlineIndex = buffer.indexOf("\n")) >= 0) {
-      const line = buffer.slice(0, newlineIndex);
-      yield line;
-      buffer = buffer.slice(newlineIndex + 1);
-    }
-  }
-  if (buffer.length > 0) {
-    yield buffer;
-  }
 }
 
 function clamp(value: number): number {

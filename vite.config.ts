@@ -10,12 +10,11 @@ export default defineConfig({
     // Latest WebKit (Safari 18+) supports virtually all ES2024 + ESNext features.
     target: ["safari18", "esnext"],
     cssMinify: "lightningcss",
-    
   },
   css: {
     transformer: "lightningcss",
     lightningcss: {
-      targets: {safari: 18},
+      targets: { safari: 18 },
     },
   },
   fmt: {
