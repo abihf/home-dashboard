@@ -1,6 +1,6 @@
 <script lang="ts">
 import type { Snippet } from "svelte";
-import { css } from "$lib/css";
+import { css } from "#lib/css.js";
 
 let {
 	percent,

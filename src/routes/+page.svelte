@@ -1,5 +1,5 @@
 <script lang="ts">
-import Swipable from "$lib/Swipable.svelte";
+import Swipable from "#lib/Swipable.svelte";
 import Clock from "./Clock.svelte";
 import Status from "./Status.svelte";
 import {

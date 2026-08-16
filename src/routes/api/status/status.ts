@@ -1,4 +1,4 @@
-import { readLines, readNumberFile, readText } from "$lib/file";
+import { readLines, readNumberFile, readText } from "#lib/file.js";
 
 import type { NetUsage, StatusResponse, Usage } from "./types";
 
