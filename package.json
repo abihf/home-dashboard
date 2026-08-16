@@ -9,14 +9,14 @@
     "#lib/*": "./src/lib/*"
   },
   "scripts": {
+    "sync": "svelte-kit sync",
     "dev": "vp dev",
     "build": "vp build",
     "preview": "vp preview",
     "lint": "vp check",
     "format": "vp format",
     "test": "vp test",
-    "test:coverage": "vp test --coverage",
-    "postinstall": "bun -e \"const fs=require('fs'); fs.rmSync('node_modules/vite',{recursive:true,force:true}); fs.symlinkSync('@voidzero-dev/vite-plus-core','node_modules/vite','junction')\""
+    "test:coverage": "vp test --coverage"
   },
   "devDependencies": {
     "@risk-tolerance/svelte-adapter-bun": "^1.8.1",
@@ -27,7 +27,8 @@
     "svelte": "^5.56.9",
     "tailwindcss": "^4.3.3",
     "typescript": "^6",
-    "vite-plus": "0.2.9"
+    "vite-plus": "0.2.9",
+    "vitest": "^4.1.10"
   },
   "overrides": {
     "vite": "npm:@voidzero-dev/vite-plus-core@0.2.9"

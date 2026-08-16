@@ -1,7 +1,7 @@
 <script lang="ts">
 import Swipable from "#lib/Swipable.svelte";
-import Clock from "./Clock.svelte";
-import Status from "./Status.svelte";
+import Clock from "#lib/Clock.svelte";
+import Status from "#lib/Status.svelte";
 import {
 	getScene,
 	initialSceneState,
@@ -12,7 +12,7 @@ import {
 	SwipeDir,
 	nextSceneState,
 	swipeScene,
-} from "./scenes";
+} from "#lib/scenes.ts";
 
 let scenesData = $state(initialScenesData);
 let sceneState = $state(initialSceneState);
