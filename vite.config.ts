@@ -1,6 +1,6 @@
-import adapter from "svelte-adapter-bun";
 import { sveltekit } from "@sveltejs/kit/vite";
 import tailwindcss from "@tailwindcss/vite";
+import adapter from "svelte-adapter-bun";
 import { defineConfig } from "vite-plus";
 
 const ignorePatterns = ["**/node_modules/**", "**/build/**", "**/.svelte-kit/**"];
@@ -9,8 +9,15 @@ export default defineConfig({
   plugins: [
     tailwindcss(),
     sveltekit({
-      
-      compilerOptions: { runes: true },
+      compilerOptions: {
+        runes: true,
+        experimental: {
+          async: true,
+        },
+      },
+      experimental: {
+        remoteFunctions: true,
+      },
       adapter: adapter({ precompress: false }),
     }),
   ],

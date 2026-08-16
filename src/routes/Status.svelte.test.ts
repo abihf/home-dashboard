@@ -1,6 +1,22 @@
 import { render } from "svelte/server";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import Status from "./Status.svelte";
+
+const zero = { percent: 0, usage: 0 };
+
+vi.mock("./status.remote", () => ({
+  getStatus: () => ({
+    current: {
+      cpuUsage: 0,
+      cpuTemp: 0,
+      memUsage: zero,
+      diskRoot: zero,
+      diskMedia: zero,
+      upload: zero,
+      download: zero,
+    },
+  }),
+}));
 
 describe("Status", () => {
   it("renders all progress sections", () => {

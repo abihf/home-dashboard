@@ -1,72 +1,22 @@
-import { readLines, readNumberFile, readText } from "#lib/file.js";
+import { readLines, readNumberFile, readText } from "./file.js";
 
-import type { NetUsage, StatusResponse, Usage } from "./types";
+export interface Usage {
+  usage: number;
+  percent: number;
+}
 
-export type SystemMonitor = ReturnType<typeof createSystemMonitor>;
+export interface NetUsage {
+  lastTx: number;
+  lastRx: number;
+}
 
-export function createSystemMonitor(reader: MetricsReader) {
-  type MonitorSubscriber = (res: string) => void;
-  const subscribers = new Set<MonitorSubscriber>();
-  let intervalHandler: ReturnType<typeof setInterval> | null = null;
-
-  async function queryAndPublish() {
-    let res: string;
-    try {
-      const status = await query(reader);
-      res = `data: ${JSON.stringify(status)}\n\n`;
-    } catch (error: any) {
-      res = `event: error\ndata: ${error.message ?? String(error)}\n\n`;
-    }
-    for (const subscriber of subscribers) {
-      subscriber(res);
-    }
-  }
-
-  function start() {
-    if (intervalHandler) return;
-    void queryAndPublish();
-
-    intervalHandler = setInterval(() => {
-      void queryAndPublish();
-    }, 1000);
-  }
-
-  function stop() {
-    if (subscribers.size > 0) return;
-    if (intervalHandler) {
-      clearInterval(intervalHandler);
-      intervalHandler = null;
-    }
-  }
-
-  function stream() {
-    let callback: MonitorSubscriber | undefined = undefined;
-    let canceled = false;
-    const stream = new ReadableStream<string>({
-      start(controller) {
-        callback = (res) => {
-          if (!canceled) {
-            controller.enqueue(res);
-          }
-        };
-        subscribers.add(callback);
-        start();
-      },
-      cancel() {
-        canceled = true;
-        if (callback) {
-          subscribers.delete(callback);
-        }
-        stop();
-      },
-    });
-
-    return stream;
-  }
-
-  return {
-    stream,
-  };
+export interface StatusResponse {
+  cpuUsage: number;
+  cpuTemp: number;
+  memUsage: Usage;
+  diskRoot: Usage;
+  diskMedia: Usage;
+  netUsage: NetUsage;
 }
 
 export type DiskUsages<Roots extends string> = Partial<Record<Roots, Usage>>;
@@ -231,7 +181,7 @@ export async function parseCpuSample(stat: AsyncIterable<string>) {
 const memInfoKeys = ["MemTotal", "MemAvailable"] as const;
 type MemInfo = Partial<Record<(typeof memInfoKeys)[number], number>>;
 
-const memInfoRegex = new RegExp(`^(${memInfoKeys.join("|")}):\\s+(\\d+)`, "m");
+const memInfoRegex = new RegExp(`^(${memInfoKeys.join("|")}):\\s+(\\d+)`);
 
 export async function parseMeminfo(meminfo: AsyncIterable<string>) {
   const stats: MemInfo = {};

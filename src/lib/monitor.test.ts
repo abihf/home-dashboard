@@ -1,16 +1,16 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import type { MetricsReader } from "./status";
+import type { MetricsReader } from "./monitor";
 
 async function loadModule() {
-  return await import("./status");
+  return await import("./monitor");
 }
 
 async function* asyncLines(lines: Iterable<string>): AsyncIterable<string> {
   yield* lines;
 }
 
-function createMockReader(overrides: Partial<MetricsReader> = {}): MetricsReader {
+export function createMockReader(overrides: Partial<MetricsReader> = {}): MetricsReader {
   return {
     readCpuUsage: vi.fn().mockResolvedValue(12),
     readMemUsage: vi.fn().mockResolvedValue({ usage: 1024, percent: 10 }),
@@ -28,13 +28,6 @@ afterEach(() => {
   vi.useRealTimers();
   vi.restoreAllMocks();
 });
-
-async function readStreamChunk(reader: ReadableStreamDefaultReader<Uint8Array | string>) {
-  const { value } = await reader.read();
-  if (!value) return "";
-  if (typeof value === "string") return value;
-  return new TextDecoder().decode(value);
-}
 
 describe("parseCpuSample", () => {
   it("extracts idle and total from /proc/stat cpu line", async () => {
@@ -98,67 +91,71 @@ describe("parseDiskUsage", () => {
       asyncLines(["Mounted on Use%  Used", "/         10%   512"]),
       ["/"],
     );
-    expect(usage).toEqual({ "/": { usage: 512 * 1024, percent: 10 } });
+    expect(usage).toEqual({
+      "/": { usage: 512 * 1024, percent: 10 },
+    });
   });
 
-  it("ignores roots that are not present", async () => {
-    const { parseDiskUsage } = await loadModule();
-    const usage = await parseDiskUsage(
-      asyncLines(["Mounted on Use%  Used", "/         10%   512"]),
-      ["/", "/media/data"],
-    );
-    expect(usage).toEqual({ "/": { usage: 512 * 1024, percent: 10 } });
-  });
-
-  it("skips lines with invalid format", async () => {
+  it("ignores unrequested mount points", async () => {
     const { parseDiskUsage } = await loadModule();
     const usage = await parseDiskUsage(
       asyncLines([
         "Mounted on Use%  Used",
-        "/         10%   512",
-        "/media/data bad   2048",
-        "/media/invalid 50%   xyz",
-        "/boot     25%   256",
+        "/boot      20%   256",
+        "/          10%   512",
+        "/other     99%   999",
       ]),
-      ["/", "/boot"],
+      ["/"],
     );
     expect(usage).toEqual({
       "/": { usage: 512 * 1024, percent: 10 },
-      "/boot": { usage: 256 * 1024, percent: 25 },
     });
   });
 
-  it("stops early once all roots are found", async () => {
-    const { parseDiskUsage } = await loadModule();
-    const lines = asyncLines([
-      "Mounted on Use%  Used",
-      "/         10%   512",
-      "/media/data 20% 1024",
-      "/extra    99%   9999",
-    ]);
-    const usage = await parseDiskUsage(lines, ["/", "/media/data"]);
-    expect(usage).toEqual({
-      "/": { usage: 512 * 1024, percent: 10 },
-      "/media/data": { usage: 1024 * 1024, percent: 20 },
-    });
-  });
-
-  it("returns an empty object when nothing matches", async () => {
+  it("ignores invalid or non-numeric percentage values", async () => {
     const { parseDiskUsage } = await loadModule();
     const usage = await parseDiskUsage(
-      asyncLines(["Mounted on Use%  Used", "/other    10%   512"]),
+      asyncLines(["Mounted on Use%  Used", "/         abc   512", "/media/data 50% 1024"]),
+      ["/", "/media/data"],
+    );
+    expect(usage).toEqual({
+      "/media/data": { usage: 1024 * 1024, percent: 50 },
+    });
+  });
+
+  it("ignores non-numeric used values", async () => {
+    const { parseDiskUsage } = await loadModule();
+    const usage = await parseDiskUsage(
+      asyncLines(["Mounted on Use%  Used", "/         50%   xyz"]),
       ["/"],
     );
     expect(usage).toEqual({});
   });
+
+  it("stops parsing once all roots are matched", async () => {
+    const { parseDiskUsage } = await loadModule();
+    let yieldedAfterMatch = false;
+
+    async function* endlessStream() {
+      yield "Mounted on Use%  Used";
+      yield "/         10%   512";
+      yieldedAfterMatch = true;
+      yield "/media/data 20% 1024";
+    }
+
+    const usage = await parseDiskUsage(endlessStream(), ["/"]);
+    expect(usage).toEqual({ "/": { usage: 512 * 1024, percent: 10 } });
+    expect(yieldedAfterMatch).toBe(false);
+  });
 });
 
 describe("query", () => {
-  it("returns a status response from the reader", async () => {
+  it("combines all reader outputs into a StatusResponse", async () => {
     const { query } = await loadModule();
     const reader = createMockReader();
+    const result = await query(reader);
 
-    await expect(query(reader)).resolves.toEqual({
+    expect(result).toEqual({
       cpuUsage: 12,
       cpuTemp: 45,
       memUsage: { usage: 1024, percent: 10 },
@@ -168,50 +165,14 @@ describe("query", () => {
     });
   });
 
-  it("uses zero defaults when disk usages are missing", async () => {
+  it("defaults missing disk roots to zero usage", async () => {
     const { query } = await loadModule();
     const reader = createMockReader({
       readDiskUsage: vi.fn().mockResolvedValue({}),
     });
+    const result = await query(reader);
 
-    await expect(query(reader)).resolves.toEqual(
-      expect.objectContaining({
-        diskRoot: { usage: 0, percent: 0 },
-        diskMedia: { usage: 0, percent: 0 },
-      }),
-    );
-  });
-});
-
-describe("createSystemMonitor", () => {
-  it("streams status to current and later subscribers", async () => {
-    vi.useFakeTimers();
-    const { createSystemMonitor } = await loadModule();
-    const reader = createMockReader();
-    const monitor = createSystemMonitor(reader);
-
-    const firstStream = monitor.stream();
-    const firstReader = firstStream.getReader();
-
-    vi.advanceTimersByTime(1000);
-    await Promise.resolve();
-    await Promise.resolve();
-    const firstChunk = await readStreamChunk(firstReader);
-    expect(firstChunk).toContain("data: ");
-    expect(firstChunk).toContain('"cpuUsage":12');
-
-    const secondStream = monitor.stream();
-    const secondReader = secondStream.getReader();
-
-    vi.advanceTimersByTime(1000);
-    await Promise.resolve();
-    await Promise.resolve();
-
-    const secondChunk = await readStreamChunk(secondReader);
-    expect(secondChunk).toContain("data: ");
-    expect(secondChunk).toContain('"cpuUsage":12');
-
-    await firstReader.cancel();
-    await secondReader.cancel();
+    expect(result.diskRoot).toEqual({ usage: 0, percent: 0 });
+    expect(result.diskMedia).toEqual({ usage: 0, percent: 0 });
   });
 });
