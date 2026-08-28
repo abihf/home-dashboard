@@ -1,7 +1,7 @@
 import adapter from "@risk-tolerance/svelte-adapter-bun";
 import { sveltekit } from "@sveltejs/kit/vite";
 import tailwindcss from "@tailwindcss/vite";
-import { defineConfig } from "vite-plus";
+import { defineConfig, type PluginOption } from "vite-plus";
 
 const ignorePatterns = ["**/node_modules/**", "**/build/**", "**/.svelte-kit/**"];
 
@@ -20,16 +20,15 @@ export default defineConfig({
       },
       adapter: adapter({ precompress: false, bundler: "bun" }),
     }),
-  ],
+  ] as PluginOption[],
   build: {
-    // Latest WebKit (Safari 18+) supports virtually all ES2024 + ESNext features.
-    target: ["safari18", "esnext"],
+    target: ["safari26", "esnext"],
     cssMinify: "lightningcss",
   },
   css: {
     transformer: "lightningcss",
     lightningcss: {
-      targets: { safari: 18 },
+      targets: { safari: 26 },
     },
   },
   fmt: {
@@ -57,7 +56,6 @@ export default defineConfig({
   },
   test: {
     coverage: {
-      provider: "istanbul",
       reporter: ["text", "lcovonly"],
       include: ["src/**/*.{ts,svelte}"],
     },
