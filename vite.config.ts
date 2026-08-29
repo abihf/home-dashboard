@@ -1,4 +1,4 @@
-import adapter from "@risk-tolerance/svelte-adapter-bun";
+import adapter from "@sveltejs/adapter-bun";
 import { sveltekit } from "@sveltejs/kit/vite";
 import tailwindcss from "@tailwindcss/vite";
 import { defineConfig, type PluginOption } from "vite-plus";
@@ -11,6 +11,7 @@ export default defineConfig({
     sveltekit({
       compilerOptions: {
         runes: true,
+        modernAst: true,
         experimental: {
           async: true,
         },
@@ -18,7 +19,7 @@ export default defineConfig({
       experimental: {
         remoteFunctions: true,
       },
-      adapter: adapter({ precompress: false, bundler: "bun" }),
+      adapter: adapter({ precompress: false }),
     }),
   ] as PluginOption[],
   build: {

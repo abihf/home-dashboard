@@ -10,6 +10,7 @@
   },
   "scripts": {
     "sync": "svelte-kit sync",
+    "postinstall": "bun run sync",
     "dev": "vp dev",
     "build": "vp build",
     "preview": "vp preview",
@@ -19,11 +20,11 @@
     "test:coverage": "vp test --coverage"
   },
   "devDependencies": {
-    "@risk-tolerance/svelte-adapter-bun": "^1.9.0",
-    "@sveltejs/kit": "3.0.0-next.25",
+    "@sveltejs/adapter-bun": "^1.0.0-next.1",
+    "@sveltejs/kit": "next",
     "@tailwindcss/vite": "^4.3.3",
     "@types/bun": "^1.4.0",
-    "svelte": "^5.56.10",
+    "svelte": "^5.57.0",
     "tailwindcss": "^4.3.3",
     "typescript": "^6",
     "vite-plus": "0.3.0",
