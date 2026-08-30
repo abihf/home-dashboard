@@ -26,9 +26,8 @@
     "@types/bun": "^1.4.0",
     "svelte": "^5.57.0",
     "tailwindcss": "^4.3.3",
-    "typescript": "^6",
-    "vite-plus": "0.3.0",
-    "vitest": "^4.1.11"
+    "typescript": "^6.0.3",
+    "vite-plus": "0.3.0"
   },
   "overrides": {
     "vite": "npm:@voidzero-dev/vite-plus-core@0.3.0"

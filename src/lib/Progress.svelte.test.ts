@@ -1,5 +1,5 @@
 import { render } from "svelte/server";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 import Progress from "./Progress.svelte";
 
 describe("Progress", () => {

@@ -1,5 +1,5 @@
 import { render } from "svelte/server";
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi } from "vite-plus/test";
 import Status from "./Status.svelte";
 
 const zero = { percent: 0, usage: 0 };
