@@ -5,7 +5,9 @@ Before=graphical.target
 
 [Service]
 WorkingDirectory=/home/abi/play/js/home-dashboard
-ExecStart=/usr/bin/bun ./build/index.js
+# background images are not embedded in the executable; they are read from BG_DIR at runtime
+Environment=BG_DIR=/home/abi/play/js/home-dashboard/assets/bg
+ExecStart=/home/abi/play/js/home-dashboard/build/server
 Restart=always
 RestartSec=10
 StandardOutput=syslog

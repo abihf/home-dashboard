@@ -13,6 +13,7 @@
     "postinstall": "bun run sync",
     "dev": "vp dev",
     "build": "vp build",
+    "build:exe": "BUILD_EXE=1 vp build",
     "preview": "vp preview",
     "lint": "vp check",
     "format": "vp format",
@@ -20,14 +21,14 @@
     "test:coverage": "vp test --coverage"
   },
   "devDependencies": {
-    "@sveltejs/adapter-bun": "^1.0.0",
-    "@sveltejs/kit": "next",
-    "@tailwindcss/vite": "^4.3.4",
+    "@sveltejs/adapter-bun": "^1.0.1",
+    "@sveltejs/kit": "^3.2.0",
+    "@tailwindcss/vite": "^4.3.5",
     "@types/bun": "^1.4.4",
     "svelte": "^5.57.3",
-    "tailwindcss": "^4.3.4",
+    "tailwindcss": "^4.3.5",
     "typescript": "^6.0.3",
-    "vite-plus": "^1.5.0"
+    "vite-plus": "^1.6.0"
   },
   "overrides": {
     "vite": "npm:@voidzero-dev/vite-plus-core@^1.5.0"

@@ -19,7 +19,22 @@ export default defineConfig({
       experimental: {
         remoteFunctions: true,
       },
-      adapter: adapter({ precompress: false }),
+      // BUILD_EXE=1 compiles the server into a single executable (build/server) for the
+      // host; BUILD_EXE=<bun target> (e.g. bun-linux-arm64) cross-compiles.
+      // assets/bg is served from disk at runtime and is not embedded.
+      adapter: adapter(
+        process.env.BUILD_EXE
+          ? {
+              buildOptions: {
+                compile:
+                  process.env.BUILD_EXE === "1"
+                    ? true
+                    : (process.env.BUILD_EXE as Bun.Build.CompileTarget),
+                minify: true,
+              },
+            }
+          : { precompress: false },
+      ),
     }),
   ] as PluginOption[],
   build: {
