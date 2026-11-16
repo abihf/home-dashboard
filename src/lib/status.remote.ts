@@ -1,6 +1,12 @@
 import { query } from "$app/server";
-import { createMetricsReader, query as queryStatus, type Usage } from "#lib/monitor.ts";
+import {
+  createMetricsReader,
+  loadMonitorConfig,
+  query as queryStatus,
+  type Usage,
+} from "#lib/monitor.ts";
 
+const config = loadMonitorConfig();
 const defaultReader = createMetricsReader();
 
 export const getStatus = query.live(async function* () {
@@ -9,7 +15,7 @@ export const getStatus = query.live(async function* () {
   let lastTx: number | undefined;
   while (true) {
     try {
-      const { netUsage, ...status } = await queryStatus(defaultReader);
+      const { netUsage, ...status } = await queryStatus(defaultReader, config);
       const now = Date.now();
       const deltaMs = lastFetchMs && now - lastFetchMs;
       const upload = netSpeed(netUsage.lastTx, lastTx, deltaMs);
@@ -22,7 +28,7 @@ export const getStatus = query.live(async function* () {
     } catch (error) {
       console.error("Error reading status:", error);
     }
-    await Bun.sleep(1000);
+    await Bun.sleep(config.intervalMs);
   }
 });
 

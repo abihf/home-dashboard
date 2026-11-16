@@ -31,21 +31,43 @@ export interface MetricsReader {
 
 const zeroUsage: Usage = { usage: 0, percent: 0 };
 
-export async function query(reader: MetricsReader): Promise<StatusResponse> {
+export interface MonitorConfig {
+  netIface: string;
+  cpuSensor: string;
+  diskRoot: string;
+  diskMedia: string;
+  intervalMs: number;
+}
+
+export function loadMonitorConfig(env: Record<string, string | undefined> = process.env) {
+  const interval = Number(env.MONITOR_INTERVAL_MS);
+  return {
+    netIface: env.MONITOR_NET_IFACE || "eth1",
+    cpuSensor: env.MONITOR_CPU_SENSOR || "k10temp",
+    diskRoot: env.MONITOR_DISK_ROOT || "/",
+    diskMedia: env.MONITOR_DISK_MEDIA || "/media/data",
+    intervalMs: Number.isFinite(interval) && interval >= 100 ? interval : 1000,
+  } satisfies MonitorConfig;
+}
+
+export async function query(
+  reader: MetricsReader,
+  config: Pick<MonitorConfig, "netIface" | "diskRoot" | "diskMedia"> = loadMonitorConfig(),
+): Promise<StatusResponse> {
   const [cpuUsage, memUsage, disk, cpuTemp, netUsage] = await Promise.all([
     reader.readCpuUsage(),
     reader.readMemUsage(),
-    reader.readDiskUsage("/", "/media/data"),
+    reader.readDiskUsage(config.diskRoot, config.diskMedia),
     reader.readCpuTemperature(),
-    reader.readNetUsage("eth1"),
+    reader.readNetUsage(config.netIface),
   ]);
 
   const status: StatusResponse = {
     cpuUsage,
     cpuTemp,
     memUsage,
-    diskRoot: disk["/"] ?? zeroUsage,
-    diskMedia: disk["/media/data"] ?? zeroUsage,
+    diskRoot: disk[config.diskRoot] ?? zeroUsage,
+    diskMedia: disk[config.diskMedia] ?? zeroUsage,
     netUsage,
   };
   return status;
@@ -117,7 +139,7 @@ export function createMetricsReader(): MetricsReader {
 
     async readCpuTemperature() {
       if (!hwmonPathPromise) {
-        hwmonPathPromise = findHwmonTempInput("k10temp");
+        hwmonPathPromise = findHwmonTempInput(loadMonitorConfig().cpuSensor);
       }
       const hwmonPath = await hwmonPathPromise;
       if (!hwmonPath) return 0;
