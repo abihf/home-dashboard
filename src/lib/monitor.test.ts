@@ -72,80 +72,18 @@ describe("parseMeminfo", () => {
   });
 });
 
-describe("parseDiskUsage", () => {
-  it("extracts usage and percent for requested roots", async () => {
-    const { parseDiskUsage } = await loadModule();
-    const usage = await parseDiskUsage(
-      asyncLines(["Mounted on Use%  Used", "/         50%   1024", "/media/data 75% 2048"]),
-      ["/", "/media/data"],
-    );
-    expect(usage).toEqual({
-      "/": { usage: 1024 * 1024, percent: 50 },
-      "/media/data": { usage: 2048 * 1024, percent: 75 },
+describe("statfsToUsage", () => {
+  it("computes used bytes and percent", async () => {
+    const { statfsToUsage } = await loadModule();
+    expect(statfsToUsage({ bsize: 4096, blocks: 100, bfree: 75 })).toEqual({
+      usage: 25 * 4096,
+      percent: 25,
     });
   });
 
-  it("skips the header line", async () => {
-    const { parseDiskUsage } = await loadModule();
-    const usage = await parseDiskUsage(
-      asyncLines(["Mounted on Use%  Used", "/         10%   512"]),
-      ["/"],
-    );
-    expect(usage).toEqual({
-      "/": { usage: 512 * 1024, percent: 10 },
-    });
-  });
-
-  it("ignores unrequested mount points", async () => {
-    const { parseDiskUsage } = await loadModule();
-    const usage = await parseDiskUsage(
-      asyncLines([
-        "Mounted on Use%  Used",
-        "/boot      20%   256",
-        "/          10%   512",
-        "/other     99%   999",
-      ]),
-      ["/"],
-    );
-    expect(usage).toEqual({
-      "/": { usage: 512 * 1024, percent: 10 },
-    });
-  });
-
-  it("ignores invalid or non-numeric percentage values", async () => {
-    const { parseDiskUsage } = await loadModule();
-    const usage = await parseDiskUsage(
-      asyncLines(["Mounted on Use%  Used", "/         abc   512", "/media/data 50% 1024"]),
-      ["/", "/media/data"],
-    );
-    expect(usage).toEqual({
-      "/media/data": { usage: 1024 * 1024, percent: 50 },
-    });
-  });
-
-  it("ignores non-numeric used values", async () => {
-    const { parseDiskUsage } = await loadModule();
-    const usage = await parseDiskUsage(
-      asyncLines(["Mounted on Use%  Used", "/         50%   xyz"]),
-      ["/"],
-    );
-    expect(usage).toEqual({});
-  });
-
-  it("stops parsing once all roots are matched", async () => {
-    const { parseDiskUsage } = await loadModule();
-    let yieldedAfterMatch = false;
-
-    async function* endlessStream() {
-      yield "Mounted on Use%  Used";
-      yield "/         10%   512";
-      yieldedAfterMatch = true;
-      yield "/media/data 20% 1024";
-    }
-
-    const usage = await parseDiskUsage(endlessStream(), ["/"]);
-    expect(usage).toEqual({ "/": { usage: 512 * 1024, percent: 10 } });
-    expect(yieldedAfterMatch).toBe(false);
+  it("returns zero percent for zero blocks", async () => {
+    const { statfsToUsage } = await loadModule();
+    expect(statfsToUsage({ bsize: 4096, blocks: 0, bfree: 0 })).toEqual({ usage: 0, percent: 0 });
   });
 });
 

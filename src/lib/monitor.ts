@@ -1,3 +1,4 @@
+import { statfs } from "node:fs/promises";
 import { readLines, readNumberFile, readText } from "./file.js";
 
 export interface Usage {
@@ -80,8 +81,6 @@ interface CpuSample {
 
 export function createMetricsReader(): MetricsReader {
   let previousCpuSample: CpuSample | undefined;
-  let diskUsageCache: DiskUsages<string> | null = {};
-  let diskUsageUpdatedAt: Date | null = null;
   let hwmonPathPromise: Promise<string | null> | null = null;
 
   return {
@@ -118,23 +117,16 @@ export function createMetricsReader(): MetricsReader {
     },
 
     async readDiskUsage<Roots extends string>(...roots: Roots[]) {
-      if (
-        diskUsageCache &&
-        diskUsageUpdatedAt &&
-        Date.now() - diskUsageUpdatedAt.getTime() < 600000
-      ) {
-        return diskUsageCache as DiskUsages<Roots>;
-      }
-      try {
-        const result = await parseDiskUsage(Bun.$`df -k --output=target,pcent,used`.lines(), roots);
-
-        diskUsageCache = result;
-        diskUsageUpdatedAt = new Date();
-        return result;
-      } catch (error) {
-        console.error("Error reading disk usage:", error);
-      }
-      return diskUsageCache as DiskUsages<Roots>;
+      const results = await Promise.allSettled(roots.map((root) => statfs(root)));
+      const usage: DiskUsages<Roots> = {};
+      results.forEach((result, i) => {
+        if (result.status === "rejected") {
+          console.error(`Error reading disk usage for ${roots[i]}:`, result.reason);
+          return;
+        }
+        usage[roots[i]] = statfsToUsage(result.value);
+      });
+      return usage;
     },
 
     async readCpuTemperature() {
@@ -218,43 +210,12 @@ export async function parseMeminfo(meminfo: AsyncIterable<string>) {
   return stats;
 }
 
-export async function parseDiskUsage<Roots extends string>(
-  dfOutput: AsyncIterable<string>,
-  roots: Roots[],
-) {
-  const usage: DiskUsages<Roots> = {};
-  const rootsSet = new Set(roots);
-  let isFirstLine = true;
-  for await (const line of dfOutput) {
-    if (isFirstLine) {
-      isFirstLine = false;
-      continue;
-    }
-
-    const parts = line.trim().split(/\s+/, 3);
-    if (parts.length < 3) continue;
-
-    const target = parts[0] as Roots;
-    if (!rootsSet.has(target)) continue;
-
-    const percentText = parts[1];
-    const usedText = parts[2];
-
-    if (!percentText.endsWith("%")) continue;
-    if (!/^\d+$/.test(usedText)) continue;
-
-    const percent = Number(percentText.slice(0, -1));
-    if (!Number.isFinite(percent)) continue;
-    const usedKb = Number(usedText);
-
-    usage[target] = {
-      usage: usedKb * 1024,
-      percent: clamp(percent),
-    };
-
-    if (Object.keys(usage).length >= rootsSet.size) break;
-  }
-  return usage;
+export function statfsToUsage(fs: { bsize: number; blocks: number; bfree: number }): Usage {
+  const used = fs.blocks - fs.bfree;
+  return {
+    usage: used * fs.bsize,
+    percent: fs.blocks > 0 ? clamp((100 * used) / fs.blocks) : 0,
+  };
 }
 
 function clamp(value: number): number {
