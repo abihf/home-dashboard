@@ -40,6 +40,7 @@ window width).
 | `MONITOR_DISK_MEDIA` | `/media/data` | Second disk bar |
 | `MONITOR_INTERVAL_MS` | `1000` | Sampling interval (min 100) |
 | `DASHBOARD_WINDOWED` | unset | Don't request fullscreen |
+| `DASHBOARD_STATS` | unset | Print frame count and render time every 10 s |
 
 `BG_DIR/list.json` lists the scenes, shown 20 s each with a 1 s crossfade:
 
@@ -60,13 +61,12 @@ natural size from the top-left corner, scaled with the layout.
 
 - `deploy/labhf-gui` — picks the display GPU, rotates the output with
   `wlr-randr`, then runs cage with the dashboard (`GUI_APP`, default
-  `/var/lib/labhf-bin/home-dashboard`). Install as `/usr/bin/labhf-gui`.
+  `/usr/bin/home-dashboard`). Install as `/usr/bin/labhf-gui`.
 - `deploy/gui.service` — the systemd unit that runs it on tty1 as user `gui`.
-  Machine-local overrides go in `/etc/labhf/gui.env` and
-  `/etc/labhf/home-dashboard.env`.
-- `deploy/gui.service.d-override.conf` — for an image-based (bootc) host whose
-  read-only `/usr` still has the browser launcher: a drop-in that runs
-  `/var/lib/labhf-bin/labhf-gui` instead.
+  Install as `/usr/lib/systemd/system/gui.service` (or
+  `/etc/systemd/system/gui.service` to override a packaged one).
+  Backgrounds default to `/usr/share/home-dashboard/bg`; machine-local
+  overrides go in `/etc/labhf/gui.env` and `/etc/labhf/home-dashboard.env`.
 
 The `gui` user must be able to reach every path it reads: `BG_DIR` and the
 `MONITOR_DISK_*` mount points (`statvfs` fails on a path inside a `0700` home).

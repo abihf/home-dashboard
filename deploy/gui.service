@@ -21,10 +21,10 @@ StandardError=journal
 UtmpIdentifier=tty1
 UtmpMode=user
 Environment=XDG_SESSION_TYPE=wayland
-# GUI_APP, GUI_GPU, GUI_OUTPUT, GUI_TRANSFORM: see /usr/bin/labhf-gui
+# GUI_APP, GUI_GPU, GUI_OUTPUT, GUI_TRANSFORM: see labhf-gui
 EnvironmentFile=-/etc/labhf/gui.env
 # Dashboard settings: BG_DIR and MONITOR_* (see the home-dashboard README).
-Environment=BG_DIR=/var/lib/labhf-dashboard/bg
+Environment=BG_DIR=/usr/share/home-dashboard/bg
 EnvironmentFile=-/etc/labhf/home-dashboard.env
 ExecStart=/usr/bin/labhf-gui
 Restart=always
@@ -33,6 +33,7 @@ RestartSec=5
 # Hardening. Not PrivateDevices: cage needs DRM, input and the tty.
 NoNewPrivileges=yes
 ProtectSystem=strict
+# cage creates its Wayland socket in the session's XDG_RUNTIME_DIR.
 ReadWritePaths=-/run/user/2000 -/var/home/gui
 PrivateTmp=yes
 ProtectKernelTunables=yes

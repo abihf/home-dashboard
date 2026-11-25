@@ -8,14 +8,14 @@
 # GPU is chosen by kernel driver name and pinned for wlroots and Mesa.
 #
 # Settings (machine-local, /etc/labhf/gui.env, read by gui.service):
-#   GUI_APP=/var/lib/labhf-bin/home-dashboard   program cage runs (the dashboard)
+#   GUI_APP=/usr/bin/home-dashboard  program cage runs (the dashboard)
 #   GUI_GPU=amdgpu                  preferred driver (falls back to any non-NVIDIA
 #                                   card, then any card); e.g. amdgpu, i915, nvidia
 #   GUI_OUTPUT=HDMI-A-1             output to rotate, "all", or empty for none
 #   GUI_TRANSFORM=90                normal, 90, 180, 270, flipped-90, ...
 set -uo pipefail
 
-: "${GUI_APP:=/var/lib/labhf-bin/home-dashboard}" "${GUI_GPU:=amdgpu}"
+: "${GUI_APP:=/usr/bin/home-dashboard}" "${GUI_GPU:=amdgpu}"
 : "${GUI_OUTPUT=HDMI-A-1}" "${GUI_TRANSFORM:=90}"
 export GUI_APP GUI_OUTPUT GUI_TRANSFORM
 

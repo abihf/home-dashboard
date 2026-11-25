@@ -36,7 +36,7 @@ use anim::Tween;
 use femtovg::{ImageSource, imgref::Img, rgb::RGB8};
 use monitor::Status;
 use scenes::Scenes;
-use ui::{Background, Fonts};
+use ui::{Background, Fonts, TextCache};
 
 const DEFAULT_SIZE: (u32, u32) = (600, 1024);
 
@@ -65,13 +65,21 @@ struct App {
     status: Option<Status>,
     clock_y: Tween,
     status_y: Tween,
-    fills: [Tween; 7],
     last_second: Option<time::LocalTime>,
+    stats: Option<Stats>,
+}
+
+/// `DASHBOARD_STATS=1`: frame count and render cost, printed every 10 s.
+struct Stats {
+    since: Instant,
+    frames: u32,
+    busy: Duration,
 }
 
 struct Gfx {
     gfx: gfx::Gfx,
     fonts: Fonts,
+    texts: TextCache,
 }
 
 impl App {
@@ -84,7 +92,11 @@ impl App {
         match gfx::Gfx::new(&self.conn, self.window.wl_surface(), w, h) {
             Ok(mut g) => {
                 let fonts = Fonts::load(&mut g.canvas);
-                self.gfx = Some(Gfx { gfx: g, fonts });
+                self.gfx = Some(Gfx {
+                    gfx: g,
+                    fonts,
+                    texts: TextCache::default(),
+                });
             }
             Err(e) => {
                 eprintln!("graphics init failed: {e}");
@@ -113,26 +125,26 @@ impl App {
                 .map(|p| RGB8::new(p[0], p[1], p[2]))
                 .collect();
             let src = ImageSource::Rgb(Img::new(pixels.as_slice(), img.width, img.height));
-            match g.gfx.canvas.create_image(src, ui::background_flags()) {
-                Ok(id) => {
-                    self.backgrounds[i] = Some(Background {
-                        image: id,
-                        width: img.width as f32,
-                        height: img.height as f32,
-                    });
+            let canvas = &mut g.gfx.canvas;
+            let bg = canvas
+                .create_image(src, ui::background_flags())
+                .map_err(|e| format!("{e:?}"))
+                .and_then(|id| Background::new(canvas, id, img.width, img.height));
+            match bg {
+                Ok(bg) => {
+                    self.backgrounds[i] = Some(bg);
                     self.dirty = true;
                 }
-                Err(e) => eprintln!("upload background {i}: {e:?}"),
+                Err(e) => eprintln!("upload background {i}: {e}"),
             }
         }
 
         if let Some(status) = self.status_slot.lock().unwrap().take() {
-            let targets = ui::bar_targets(&status);
-            for (tw, t) in self.fills.iter_mut().zip(targets) {
-                tw.set(t, now);
+            // Shown with the next clock tick, so idle is one frame per second;
+            // only the first status redraws at once.
+            if self.status.replace(status).is_none() {
+                self.dirty = true;
             }
-            self.status = Some(status);
-            self.dirty = true;
         }
 
         let decoded = &self.decoded;
@@ -154,10 +166,7 @@ impl App {
     }
 
     fn animating(&self, now: Instant) -> bool {
-        self.scenes.animating()
-            || self.clock_y.animating(now)
-            || self.status_y.animating(now)
-            || self.fills.iter().any(|t| t.animating(now))
+        self.scenes.animating() || self.clock_y.animating(now) || self.status_y.animating(now)
     }
 
     /// How long `poll` may sleep before the next scheduled change.
@@ -174,8 +183,8 @@ impl App {
             return;
         }
         let Some(g) = self.gfx.as_mut() else { return };
+        let started = Instant::now();
         let view = self.scenes.view(now);
-        let fills = self.fills.each_ref().map(|t| t.value(now));
         let frame = ui::Frame {
             scale: g.gfx.width as f32 / ui::DESIGN_WIDTH,
             background: self.backgrounds[view.background].as_ref(),
@@ -185,15 +194,34 @@ impl App {
             clock_y: self.clock_y.value(now),
             status_y: self.status_y.value(now),
             time: self.last_second.unwrap_or_else(|| time::local(SystemTime::now())),
-            bars: self.status.as_ref().map(|s| ui::bars(s, &fills)),
+            bars: self.status.as_ref().map(ui::bars),
         };
-        ui::draw(&mut g.gfx.canvas, &g.fonts, &frame);
+        ui::draw(&mut g.gfx.canvas, &g.fonts, &mut g.texts, &frame);
 
         let surface = self.window.wl_surface();
         surface.frame(qh, FrameCallbackData(surface.clone()));
         g.gfx.present();
         self.frame_pending = true;
         self.dirty = false;
+
+        if let Some(st) = &mut self.stats {
+            st.frames += 1;
+            st.busy += started.elapsed();
+            let elapsed = started.saturating_duration_since(st.since);
+            if elapsed >= Duration::from_secs(10) {
+                let avg = st.busy.as_secs_f64() * 1000.0 / st.frames.max(1) as f64;
+                eprintln!(
+                    "stats: {} frames in {:.1}s, {avg:.2} ms/frame render",
+                    st.frames,
+                    elapsed.as_secs_f64()
+                );
+                *st = Stats {
+                    since: started,
+                    frames: 0,
+                    busy: Duration::ZERO,
+                };
+            }
+        }
     }
 }
 
@@ -421,8 +449,14 @@ fn main() {
         status: None,
         clock_y: Tween::new(first.clock_pos, Duration::from_secs(1)),
         status_y: Tween::new(first.status_pos, Duration::from_secs(1)),
-        fills: std::array::from_fn(|_| Tween::new(0.0, Duration::from_millis(150))),
         last_second: None,
+        stats: env("DASHBOARD_STATS")
+            .is_some_and(|v| !v.is_empty() && v != "0")
+            .then(|| Stats {
+                since: Instant::now(),
+                frames: 0,
+                busy: Duration::ZERO,
+            }),
     };
 
     let mut buf = [0u8; 64];
