@@ -16,24 +16,24 @@ jobs:
       attestations: write
     strategy:
       matrix:
-        target: [bun-linux-x64]
+        target: [x86_64-unknown-linux-gnu]
     steps:
       - uses: actions/checkout@v7
-      - uses: oven-sh/setup-bun@v2
+      - name: Install system libraries
+        run: sudo apt-get update && sudo apt-get install -y libwayland-dev
+      - uses: dtolnay/rust-toolchain@stable
         with:
-          bun-version: latest
-      - name: Install dependencies
-        run: bun install --frozen-lockfile
+          targets: ${{ matrix.target }}
       - name: Build executable
-        run: bun run build
+        run: cargo build --release --locked --target "$TARGET"
         env:
-          BUILD_EXE: ${{ matrix.target }}
+          TARGET: ${{ matrix.target }}
       - name: Package
         run: |
-          name="home-dashboard-${GITHUB_REF_NAME}-${TARGET#bun-}"
+          name="home-dashboard-${GITHUB_REF_NAME}-${TARGET%%-unknown-*}-linux"
           mkdir -p "dist/$name"
-          cp build/server "dist/$name/home-dashboard"
-          cp home-dashboard.service README.md "dist/$name/"
+          cp "target/$TARGET/release/home-dashboard" "dist/$name/home-dashboard"
+          cp -r deploy README.md assets/fonts/OFL.txt "dist/$name/"
           tar -C dist -czf "dist/$name.tar.gz" "$name"
         env:
           TARGET: ${{ matrix.target }}
